@@ -1,4 +1,4 @@
-/**
+/*
  * Topaz - ATA Transport
  *
  * This file implements OS abstracted API to implement TCG IF-SEND and IF-RECV

@@ -1,4 +1,4 @@
-/**
+/*
  * Topaz - ATA Transport (Linux SGIO)
  *
  * This file is an implementation of a Linux specific OS API for
