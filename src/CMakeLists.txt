@@ -1,1 +1,1 @@
-subdirs(topaz)
+subdirs(topaz tools)

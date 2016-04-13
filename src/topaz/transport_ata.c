@@ -28,6 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
+#include <string.h>
 #include <topaz/transport_ata.h>
 
 /**
@@ -43,11 +45,11 @@
 int tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data)
 {
   /* ATA12 Command - Identify Device (0xec) */
-  tp_ata_cmd12_t cmd = {0};
+  tp_ata_cmd12_t cmd;
+  memset(&cmd, 0, sizeof(cmd));
   cmd.command     = 0xec;
-    
+  
   /* Off it goes */
-  //TOPAZ_DEBUG(1) printf("Probe ATA Identify\n");
   return tp_ata_exec12(handle, &cmd, TP_ATA_OPER_READ, data, 1, 1);
 }
 
@@ -69,7 +71,8 @@ int tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
 		   uint16_t comid, void *data, uint8_t bcount)
 {
   /* Build ATA12 Command - Trusted Send (0x5e) */
-  tp_ata_cmd12_t cmd  = {0};
+  tp_ata_cmd12_t cmd;
+  memset(&cmd, 0, sizeof(cmd));
   cmd.feature      = proto;
   cmd.count        = bcount;
   cmd.lba_mid      = comid & 0xff;
@@ -98,7 +101,8 @@ int tp_ata_if_recv(struct TP_ATA_DRIVE *handle, uint8_t proto,
 		   uint16_t comid, void *data, uint8_t bcount)
 {
   /* Build ATA12 command - Trusted Receive (0x5c) */
-  tp_ata_cmd12_t cmd  = {0};
+  tp_ata_cmd12_t cmd;
+  memset(&cmd, 0, sizeof(cmd));
   cmd.feature      = proto;
   cmd.count        = bcount;
   cmd.lba_mid      = comid & 0xff;

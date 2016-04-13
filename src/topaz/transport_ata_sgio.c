@@ -29,11 +29,39 @@
  */
 
 #include <unistd.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <scsi/sg.h>
 #include <topaz/transport_ata.h>
+#include <topaz/errno.h>
+
+void dump(void *data, unsigned int len)
+{
+  unsigned char *ptr = (unsigned char*)data;
+  int i;
+  
+  for (i = 0; i < len; i++)
+  {
+    if (i % 16 == 0)
+    {
+      printf("%04x :", i);
+    }
+    printf(" %02x", (unsigned char)(ptr[i]));
+    if (i % 16 == 15)
+    {
+      printf("\n");
+    }
+  }
+  printf("\n");
+}
+
+/** Single ATA block (Note sector size may be 4k) */
+#define ATA_BLOCK_SIZE 512
 
 /** Linux device handle */
 struct TP_ATA_DRIVE
@@ -52,7 +80,7 @@ struct TP_ATA_DRIVE
 struct TP_ATA_DRIVE *tp_ata_open(char const *path)
 {
   struct TP_ATA_DRIVE *handle = NULL;
-  int fd = -1;
+  int rc, fd = -1;
   char in;
   
   /*
@@ -63,15 +91,16 @@ struct TP_ATA_DRIVE *tp_ata_open(char const *path)
   fd = open("/sys/module/libata/parameters/allow_tpm", O_RDONLY);
   if (fd == -1)
   {
-    return NULL;
+    rc = TP_ERR_OPEN;
+    goto cleanup;
   }
   
   /* check kernel's setting */
   if ((read(fd, &in, 1) != 1) || (in == '0'))
   {
     /* libata blocking TPM calls ... */
-    close(fd);
-    return NULL;
+    rc = TP_ERR_LIBATA;
+    goto cleanup;
   }
   
   /* cleanup */
@@ -85,20 +114,39 @@ struct TP_ATA_DRIVE *tp_ata_open(char const *path)
   fd = open(path, O_RDWR);
   if (fd == -1)
   {
-    return NULL;
+    rc = TP_ERR_OPEN;
+    goto cleanup;
   }
   
   /* allocate some memory for device handle */
   handle = (struct TP_ATA_DRIVE*)calloc(sizeof(struct TP_ATA_DRIVE), 1);
   if (handle == NULL)
   {
-    close(fd);
-    return NULL;
+    rc = TP_ERR_ALLOC;
+    goto cleanup;
   }
   
   /* all done */
   handle->fd = fd;
   return handle;
+  
+  cleanup: /* on failure */
+  
+  /* close handle if open */
+  if (fd != -1)
+  {
+    close(fd);
+  }
+  
+  /* clear memory if allocated */
+  if (handle != NULL)
+  {
+    free(handle);
+  }
+  
+  /* set errno and return */
+  tp_errno = rc;
+  return NULL;
 }
 
 /**
@@ -140,6 +188,119 @@ int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
 		  tp_ata_oper_type_t optype, void *data,
 		  uint8_t bcount, int wait)
 {
-  // TBD
-  return -1;
+  struct sg_io_hdr sg_io;  // ioctl data structure
+  unsigned char cdb[12];   // Command descriptor block
+  unsigned char sense[32]; // SCSI sense (error) data
+  int rc;
+  
+  // Initialize structures
+  memset(&sg_io, 0, sizeof(sg_io));
+  memset(&cdb, 0, sizeof(cdb));
+  memset(&sense, 0, sizeof(sense));
+  
+  ////
+  // Fill in ioctl data for ATA12 pass through
+  //
+  
+  // Mandatory per interface
+  sg_io.interface_id    = 'S';
+  
+  // Location, size of command descriptor block (command)
+  sg_io.cmdp            = cdb;
+  sg_io.cmd_len         = sizeof(cdb);
+  
+  // Command data transfer (optional)
+  sg_io.dxferp          = data;
+  sg_io.dxfer_len       = bcount * ATA_BLOCK_SIZE;
+  
+  // Sense (error) data
+  sg_io.sbp             = sense;
+  sg_io.mx_sb_len       = sizeof(sense);
+  
+  // Timeout (ms)
+  sg_io.timeout         = wait * 1000;
+  
+  ////
+  // Fill in SCSI command
+  //
+  
+  // Byte 0: ATA12 pass through
+  cdb[0] = 0xA1;
+  
+  // Byte 1: ATA protocol (read/write/none)
+  // Byte 2: Check condition, blocks, size, I/O direction
+  // Final direction specific bits
+  switch (optype)
+  {
+    case TP_ATA_OPER_READ:
+      sg_io.dxfer_direction = SG_DXFER_FROM_DEV;
+      cdb[1] = 4 << 1; // ATA PIO-in
+      cdb[2] = 0x2e;   // Check, blocks, size in sector count, read
+      break;
+
+    case TP_ATA_OPER_WRITE:
+      sg_io.dxfer_direction = SG_DXFER_TO_DEV;
+      cdb[1] = 5 << 1; // ATA PIO-out
+      cdb[2] = 0x26;   // Check, blocks, size in sector count
+      break;
+      
+    default: // Invalid
+      return tp_errno = TP_ERR_INVALID;
+      break;
+  }
+  
+  // Rest of ATA12 command get copied here (7 bytes)
+  memcpy(cdb + 3, cmd, 7);
+  
+  ////
+  // Run ioctl
+  //
+  
+  // Debug output command
+  //TOPAZ_DEBUG(4)
+  {
+    // Command descriptor block
+    printf("ATA Command:\n");
+    dump(cmd, sizeof(*cmd));
+    
+    // Command descriptor block
+    printf("SCSI CDB:\n");
+    dump(cdb, sizeof(cdb));
+    
+    // Data out?
+    if (optype == TP_ATA_OPER_WRITE)
+    {
+      printf("Write Data:\n");
+      dump(data, bcount * ATA_BLOCK_SIZE);
+    }
+  }
+  
+  // System call
+  rc = ioctl(handle->fd, SG_IO, &sg_io);
+  if (rc != 0)
+  {
+    return tp_errno = TP_ERR_IOCTL;
+  }
+  
+  // Debug input
+  if (optype == TP_ATA_OPER_READ)
+  { 
+    //TOPAZ_DEBUG(4)
+    {
+      printf("Read Data:\n");
+      dump(data, bcount * ATA_BLOCK_SIZE);
+    }
+  }
+  
+  // Check sense data
+  if (sense[0] != 0x72 || sense[7] != 0x0e || sense[8] != 0x09
+      || sense[9] != 0x0c || sense[10] != 0x00)
+  {
+    //fprintf(stderr, "error  = %02x\n", sense[11]);    // 0x00 means success
+    //fprintf(stderr, "status = %02x\n", sense[21]);    // 0x50 means success
+    return tp_errno = TP_ERR_SENSE;
+  }
+  
+  // Otherwise ok
+  return 0;
 }
