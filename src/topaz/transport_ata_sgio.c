@@ -1,11 +1,8 @@
-#ifndef TOPAZ_TRANSPORT_ATA_H
-#define TOPAZ_TRANSPORT_ATA_H
-
 /**
- * Topaz - ATA Transport
+ * Topaz - ATA Transport (Linux SGIO)
  *
- * This file implements OS abstracted API to implement TCG IF-SEND and IF-RECV
- * calls, along with other basic ATA commands.
+ * This file is an implementation of a Linux specific OS API for
+ * basic ATA commands.
  *
  * Copyright (c) 2016, T Parys
  * All rights reserved.
@@ -31,29 +28,18 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <topaz/transport_ata.h>
 
-/** ATA operation direction */
-typedef enum
+/** Linux device handle */
+struct TP_ATA_DRIVE
 {
-  TP_ATA_OPER_READ = 1,
-  TP_ATA_OPER_WRITE
-} tp_ata_oper_type_t;
-
-/** ATA12 Command */
-typedef struct
-{
-  uint8_t feature;
-  uint8_t count;
-  uint8_t lba_low;
-  uint8_t lba_mid;
-  uint8_t lba_high;
-  uint8_t device;
-  uint8_t command;
-} tp_ata_cmd12_t;
-
-/** Opaque ATA device data handle (OS-Agnostic) */
-struct TP_ATA_DRIVE;
+  int fd; /** POSIX file descriptor */
+};
 
 /**
  * \brief Open ATA Device (OS Specific)
@@ -63,17 +49,79 @@ struct TP_ATA_DRIVE;
  * \param[in] path Path to device
  * \return Pointer to new device, or NULL on error
  */
-struct TP_ATA_DRIVE *tp_ata_open(char const *path);
+struct TP_ATA_DRIVE *tp_ata_open(char const *path)
+{
+  struct TP_ATA_DRIVE *handle = NULL;
+  int fd = -1;
+  char in;
+  
+  /*
+   * First check that libata is playing nice ...
+   */
+  
+  /* open pesudofile in sysfs */ 
+  fd = open("/sys/module/libata/parameters/allow_tpm", O_RDONLY);
+  if (fd == -1)
+  {
+    return NULL;
+  }
+  
+  /* check kernel's setting */
+  if ((read(fd, &in, 1) != 1) || (in == '0'))
+  {
+    /* libata blocking TPM calls ... */
+    close(fd);
+    return NULL;
+  }
+  
+  /* cleanup */
+  close(fd);
+  
+  /*
+   * Next, let's open the device ...
+   */
+  
+  /* open block device */
+  fd = open(path, O_RDWR);
+  if (fd == -1)
+  {
+    return NULL;
+  }
+  
+  /* allocate some memory for device handle */
+  handle = (struct TP_ATA_DRIVE*)calloc(sizeof(struct TP_ATA_DRIVE), 1);
+  if (handle == NULL)
+  {
+    close(fd);
+    return NULL;
+  }
+  
+  /* all done */
+  handle->fd = fd;
+  return handle;
+}
 
 /**
  * \brief Close ATA Device (OS Specific)
  *
- * OS-agnostic API to close a ATA device handle
+ * Linux specific API to close a ATA device handle
  *
  * \param[in] handle Device handle
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_close(struct TP_ATA_DRIVE *handle);
+int tp_ata_close(struct TP_ATA_DRIVE *handle)
+{
+  /* sanity check */
+  if (handle == NULL)
+  {
+    return -1;
+  }
+  
+  /* cleanup */
+  close(handle->fd);
+  free(handle);
+  return 0;
+}
 
 /**
  * \brief Execute ATA12 Command (OS Specific)
@@ -90,52 +138,8 @@ int tp_ata_close(struct TP_ATA_DRIVE *handle);
  */
 int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
 		  tp_ata_oper_type_t optype, void *data,
-		  uint8_t bcount, int wait);
-
-/**
- * \brief ATA Identify
- *
- * Implementation of ATA Identify command to query
- * drive self-identification data.
- *
- * \param[in] handle Device handle
- * \param[out] data Pointer to 512 byte buffer
- * \return 0 on success, error code indicating failure
- */
-int tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data);
-
-/**
- * \brief ATA IF-SEND
- *
- * Implementation of TCG SWG IF-SEND method to send
- * data to a particular Communication ID via a specified
- * security protocol.
- *
- * \param[in] handle Device handle
- * \param[in] proto Security protocol
- * \param[in] comid Communication ID
- * \param[in] data I/O data buffer
- * \param[in] bcount Count of 512 byte blocks to transfer
- * \return 0 on success, error code indicating failure
- */
-int tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
-		   uint16_t comid, void *data, uint8_t bcount);
-
-/**
- * \brief ATA IF-RECV
- *
- * Implementation of TCG SWG IF-RECV method to receive
- * data from a particular Communication ID via a specified
- * security protocol.
- *
- * \param[in] handle Device handle
- * \param[in] proto Security protocol
- * \param[in] comid Communication ID
- * \param[out] data I/O data buffer
- * \param[in] bcount Count of 512 byte blocks to transfer
- * \return 0 on success, error code indicating failure
- */
-int tp_ata_if_recv(struct TP_ATA_DRIVE *handle, uint8_t proto,
-		   uint16_t comid, void *data, uint8_t bcount);
-
-#endif
+		  uint8_t bcount, int wait)
+{
+  // TBD
+  return -1;
+}

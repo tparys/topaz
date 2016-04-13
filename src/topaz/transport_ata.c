@@ -1,6 +1,3 @@
-#ifndef TOPAZ_TRANSPORT_ATA_H
-#define TOPAZ_TRANSPORT_ATA_H
-
 /**
  * Topaz - ATA Transport
  *
@@ -31,66 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
-
-/** ATA operation direction */
-typedef enum
-{
-  TP_ATA_OPER_READ = 1,
-  TP_ATA_OPER_WRITE
-} tp_ata_oper_type_t;
-
-/** ATA12 Command */
-typedef struct
-{
-  uint8_t feature;
-  uint8_t count;
-  uint8_t lba_low;
-  uint8_t lba_mid;
-  uint8_t lba_high;
-  uint8_t device;
-  uint8_t command;
-} tp_ata_cmd12_t;
-
-/** Opaque ATA device data handle (OS-Agnostic) */
-struct TP_ATA_DRIVE;
-
-/**
- * \brief Open ATA Device (OS Specific)
- *
- * OS-agnostic API to provide an ATA device handle
- *
- * \param[in] path Path to device
- * \return Pointer to new device, or NULL on error
- */
-struct TP_ATA_DRIVE *tp_ata_open(char const *path);
-
-/**
- * \brief Close ATA Device (OS Specific)
- *
- * OS-agnostic API to close a ATA device handle
- *
- * \param[in] handle Device handle
- * \return 0 on success, error code indicating failure
- */
-int tp_ata_close(struct TP_ATA_DRIVE *handle);
-
-/**
- * \brief Execute ATA12 Command (OS Specific)
- *
- * OS-agnostic API to execute an ATA12 command
- *
- * \param[in] handle Device handle
- * \param[in] cmd Pointer to ATA12 command structure
- * \param[in] optype Operation type / direction
- * \param[in,out] data Data buffer for operation
- * \param[in] bcount Count of 512 byte blocks to transfer
- * \param[in] wait Timeout in seconds
- * \return 0 on success, error code indicating failure
- */
-int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
-		  tp_ata_oper_type_t optype, void *data,
-		  uint8_t bcount, int wait);
+#include <topaz/transport_ata.h>
 
 /**
  * \brief ATA Identify
@@ -102,7 +40,16 @@ int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
  * \param[out] data Pointer to 512 byte buffer
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data);
+int tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data)
+{
+  /* ATA12 Command - Identify Device (0xec) */
+  tp_ata_cmd12_t cmd = {0};
+  cmd.command     = 0xec;
+    
+  /* Off it goes */
+  //TOPAZ_DEBUG(1) printf("Probe ATA Identify\n");
+  return tp_ata_exec12(handle, &cmd, TP_ATA_OPER_READ, data, 1, 1);
+}
 
 /**
  * \brief ATA IF-SEND
@@ -119,7 +66,19 @@ int tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data);
  * \return 0 on success, error code indicating failure
  */
 int tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
-		   uint16_t comid, void *data, uint8_t bcount);
+		   uint16_t comid, void *data, uint8_t bcount)
+{
+  /* Build ATA12 Command - Trusted Send (0x5e) */
+  tp_ata_cmd12_t cmd  = {0};
+  cmd.feature      = proto;
+  cmd.count        = bcount;
+  cmd.lba_mid      = comid & 0xff;
+  cmd.lba_high     = comid >> 8;
+  cmd.command      = 0x5e;
+  
+  /* Off it goes */
+  return tp_ata_exec12(handle, &cmd, TP_ATA_OPER_WRITE, data, bcount, 5);
+}
 
 /**
  * \brief ATA IF-RECV
@@ -136,6 +95,16 @@ int tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
  * \return 0 on success, error code indicating failure
  */
 int tp_ata_if_recv(struct TP_ATA_DRIVE *handle, uint8_t proto,
-		   uint16_t comid, void *data, uint8_t bcount);
-
-#endif
+		   uint16_t comid, void *data, uint8_t bcount)
+{
+  /* Build ATA12 command - Trusted Receive (0x5c) */
+  tp_ata_cmd12_t cmd  = {0};
+  cmd.feature      = proto;
+  cmd.count        = bcount;
+  cmd.lba_mid      = comid & 0xff;
+  cmd.lba_high     = comid >> 8;
+  cmd.command      = 0x5c;
+  
+  /* Off it goes */
+  return tp_ata_exec12(handle, &cmd, TP_ATA_OPER_READ, data, bcount, 5);
+}
