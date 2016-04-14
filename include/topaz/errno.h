@@ -1,7 +1,7 @@
 #ifndef TOPAZ_ERRNO_H
 #define TOPAZ_ERRNO_H
 
-/**
+/*
  * Topaz - Error Numbers / Ids
  *
  * This file implements known error codes, as used by the topaz library.

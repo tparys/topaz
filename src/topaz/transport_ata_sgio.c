@@ -37,28 +37,9 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <scsi/sg.h>
-#include <topaz/transport_ata.h>
+#include <topaz/debug.h>
 #include <topaz/errno.h>
-
-void dump(void const *data, unsigned int len)
-{
-  unsigned char const *ptr = (unsigned char const*)data;
-  int i;
-  
-  for (i = 0; i < len; i++)
-  {
-    if (i % 16 == 0)
-    {
-      printf("%04x :", i);
-    }
-    printf(" %02x", (unsigned char)(ptr[i]));
-    if (i % 16 == 15)
-    {
-      printf("\n");
-    }
-  }
-  printf("\n");
-}
+#include <topaz/transport_ata.h>
 
 /** Linux device handle */
 struct TP_ATA_DRIVE
@@ -254,21 +235,21 @@ int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
   //
   
   // Debug output command
-  //TOPAZ_DEBUG(4)
+  TP_DEBUG(4)
   {
     // Command descriptor block
     printf("ATA Command:\n");
-    dump(cmd, sizeof(*cmd));
+    tp_debug_dump(cmd, sizeof(*cmd));
     
     // Command descriptor block
     printf("SCSI CDB:\n");
-    dump(cdb, sizeof(cdb));
+    tp_debug_dump(cdb, sizeof(cdb));
     
     // Data out?
     if (optype == TP_ATA_OPER_WRITE)
     {
       printf("Write Data:\n");
-      dump(data, bcount * TP_ATA_BLOCK_SIZE);
+      tp_debug_dump(data, bcount * TP_ATA_BLOCK_SIZE);
     }
   }
   
@@ -282,10 +263,10 @@ int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
   // Debug input
   if (optype == TP_ATA_OPER_READ)
   { 
-    //TOPAZ_DEBUG(4)
+    TP_DEBUG(4)
     {
       printf("Read Data:\n");
-      dump(data, bcount * TP_ATA_BLOCK_SIZE);
+      tp_debug_dump(data, bcount * TP_ATA_BLOCK_SIZE);
     }
   }
   
