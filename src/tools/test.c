@@ -5,12 +5,15 @@
 
 int main()
 {
+  printf("Topaz errno %s\n", tp_errno_lookup(-1)); //TP_ERR_LIBATA));
+  return 0;
+  
   struct TP_ATA_DRIVE *handle = tp_ata_open("/dev/sdc");
-  int i;
+  //int i;
   char buf[512];
   memset(buf, 1, 512);
   
-  printf("Topaz errno is %x\n", tp_errno);
+  printf("Topaz errno is %x (%s)\n", tp_errno, tp_errno_lookup_cur());
   
   if (handle == NULL)
   {

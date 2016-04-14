@@ -33,6 +33,9 @@
 
 #include <stdint.h>
 
+/** Single ATA block (Note sector size may still be 4k) */
+#define TP_ATA_BLOCK_SIZE 512
+
 /** ATA operation direction */
 typedef enum
 {

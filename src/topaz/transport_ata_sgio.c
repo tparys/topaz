@@ -40,9 +40,9 @@
 #include <topaz/transport_ata.h>
 #include <topaz/errno.h>
 
-void dump(void *data, unsigned int len)
+void dump(void const *data, unsigned int len)
 {
-  unsigned char *ptr = (unsigned char*)data;
+  unsigned char const *ptr = (unsigned char const*)data;
   int i;
   
   for (i = 0; i < len; i++)
@@ -59,9 +59,6 @@ void dump(void *data, unsigned int len)
   }
   printf("\n");
 }
-
-/** Single ATA block (Note sector size may be 4k) */
-#define ATA_BLOCK_SIZE 512
 
 /** Linux device handle */
 struct TP_ATA_DRIVE
@@ -211,7 +208,7 @@ int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
   
   // Command data transfer (optional)
   sg_io.dxferp          = data;
-  sg_io.dxfer_len       = bcount * ATA_BLOCK_SIZE;
+  sg_io.dxfer_len       = bcount * TP_ATA_BLOCK_SIZE;
   
   // Sense (error) data
   sg_io.sbp             = sense;
@@ -271,7 +268,7 @@ int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
     if (optype == TP_ATA_OPER_WRITE)
     {
       printf("Write Data:\n");
-      dump(data, bcount * ATA_BLOCK_SIZE);
+      dump(data, bcount * TP_ATA_BLOCK_SIZE);
     }
   }
   
@@ -288,7 +285,7 @@ int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
     //TOPAZ_DEBUG(4)
     {
       printf("Read Data:\n");
-      dump(data, bcount * ATA_BLOCK_SIZE);
+      dump(data, bcount * TP_ATA_BLOCK_SIZE);
     }
   }
   

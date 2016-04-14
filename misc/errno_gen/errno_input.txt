@@ -1,0 +1,18 @@
+
+SUCCESS : No error reported
+UNSPECIFIED : Unspecified error
+OPEN : Error opening file
+CLOSE : Error opening file
+INVALID : Invalid argument
+NULL : NULL Pointer
+ALLOC : Error allocating memory
+
+@Tranport Errors
+
+IOCTL : Failed to call ioctl
+SENSE : Bad sense data
+
+@Linux Specific Errors
+
+SYSFS : Error reading from sysfs
+LIBATA : Libata blocking TPM calls (add kernel argument 'libata.allow_tpm=1')
