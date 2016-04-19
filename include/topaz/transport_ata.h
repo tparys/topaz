@@ -32,6 +32,7 @@
  */
 
 #include <stdint.h>
+#include <topaz/errno.h>
 
 /** Single ATA block (Note sector size may still be 4k) */
 #define TP_ATA_BLOCK_SIZE 512
@@ -76,7 +77,7 @@ struct TP_ATA_DRIVE *tp_ata_open(char const *path);
  * \param[in] handle Device handle
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_close(struct TP_ATA_DRIVE *handle);
+tp_errno_t tp_ata_close(struct TP_ATA_DRIVE *handle);
 
 /**
  * \brief Execute ATA12 Command (OS Specific)
@@ -91,9 +92,9 @@ int tp_ata_close(struct TP_ATA_DRIVE *handle);
  * \param[in] wait Timeout in seconds
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
-		  tp_ata_oper_type_t optype, void *data,
-		  uint8_t bcount, int wait);
+tp_errno_t tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
+			 tp_ata_oper_type_t optype, void *data,
+			 uint8_t bcount, int wait);
 
 /**
  * \brief ATA Identify
@@ -105,7 +106,7 @@ int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
  * \param[out] data Pointer to 512 byte buffer
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data);
+tp_errno_t tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data);
 
 /**
  * \brief ATA IF-SEND
@@ -121,8 +122,8 @@ int tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data);
  * \param[in] bcount Count of 512 byte blocks to transfer
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
-		   uint16_t comid, void *data, uint8_t bcount);
+tp_errno_t tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
+			  uint16_t comid, void *data, uint8_t bcount);
 
 /**
  * \brief ATA IF-RECV
@@ -138,7 +139,7 @@ int tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
  * \param[in] bcount Count of 512 byte blocks to transfer
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_if_recv(struct TP_ATA_DRIVE *handle, uint8_t proto,
-		   uint16_t comid, void *data, uint8_t bcount);
+tp_errno_t tp_ata_if_recv(struct TP_ATA_DRIVE *handle, uint8_t proto,
+			  uint16_t comid, void *data, uint8_t bcount);
 
 #endif

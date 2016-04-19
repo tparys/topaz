@@ -135,7 +135,7 @@ struct TP_ATA_DRIVE *tp_ata_open(char const *path)
  * \param[in] handle Device handle
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_close(struct TP_ATA_DRIVE *handle)
+tp_errno_t tp_ata_close(struct TP_ATA_DRIVE *handle)
 {
   /* sanity check */
   if (handle == NULL)
@@ -162,9 +162,9 @@ int tp_ata_close(struct TP_ATA_DRIVE *handle)
  * \param[in] wait Timeout in seconds
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
-		  tp_ata_oper_type_t optype, void *data,
-		  uint8_t bcount, int wait)
+tp_errno_t tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
+			 tp_ata_oper_type_t optype, void *data,
+			 uint8_t bcount, int wait)
 {
   struct sg_io_hdr sg_io;  // ioctl data structure
   unsigned char cdb[12];   // Command descriptor block

@@ -70,4 +70,4 @@ autogen('../../include/topaz/errno.h',
 # Autogenerate C data structures
 autogen('../../src/topaz/errno.c',
         lambda x: '\n  /* %s */\n\n' % x,
-        lambda x: '  /* TP_ERR_%-15s */ { 0x%08x, "%s" },\n' % x)
+        lambda x: '  { TP_ERR_%-15s, "%s" },\n' % (x[0], x[2]))

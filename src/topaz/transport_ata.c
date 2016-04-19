@@ -42,7 +42,7 @@
  * \param[out] data Pointer to 512 byte buffer
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data)
+tp_errno_t tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data)
 {
   /* ATA12 Command - Identify Device (0xec) */
   tp_ata_cmd12_t cmd;
@@ -67,8 +67,8 @@ int tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data)
  * \param[in] bcount Count of 512 byte blocks to transfer
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
-		   uint16_t comid, void *data, uint8_t bcount)
+tp_errno_t tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
+			  uint16_t comid, void *data, uint8_t bcount)
 {
   /* Build ATA12 Command - Trusted Send (0x5e) */
   tp_ata_cmd12_t cmd;
@@ -97,8 +97,8 @@ int tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
  * \param[in] bcount Count of 512 byte blocks to transfer
  * \return 0 on success, error code indicating failure
  */
-int tp_ata_if_recv(struct TP_ATA_DRIVE *handle, uint8_t proto,
-		   uint16_t comid, void *data, uint8_t bcount)
+tp_errno_t tp_ata_if_recv(struct TP_ATA_DRIVE *handle, uint8_t proto,
+			  uint16_t comid, void *data, uint8_t bcount)
 {
   /* Build ATA12 command - Trusted Receive (0x5c) */
   tp_ata_cmd12_t cmd;
