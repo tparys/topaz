@@ -57,7 +57,7 @@ typedef struct
 } tp_ata_cmd12_t;
 
 /** Opaque ATA device data handle (OS-Agnostic) */
-struct TP_ATA_DRIVE;
+struct TP_ATA_HANDLE;
 
 /**
  * \brief Open ATA Device (OS Specific)
@@ -67,7 +67,7 @@ struct TP_ATA_DRIVE;
  * \param[in] path Path to device
  * \return Pointer to new device, or NULL on error
  */
-struct TP_ATA_DRIVE *tp_ata_open(char const *path);
+struct TP_ATA_HANDLE *tp_ata_open(char const *path);
 
 /**
  * \brief Close ATA Device (OS Specific)
@@ -77,7 +77,7 @@ struct TP_ATA_DRIVE *tp_ata_open(char const *path);
  * \param[in] handle Device handle
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_ata_close(struct TP_ATA_DRIVE *handle);
+tp_errno_t tp_ata_close(struct TP_ATA_HANDLE *handle);
 
 /**
  * \brief Execute ATA12 Command (OS Specific)
@@ -92,7 +92,7 @@ tp_errno_t tp_ata_close(struct TP_ATA_DRIVE *handle);
  * \param[in] wait Timeout in seconds
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
+tp_errno_t tp_ata_exec12(struct TP_ATA_HANDLE *handle, tp_ata_cmd12_t const *cmd,
 			 tp_ata_oper_type_t optype, void *data,
 			 uint8_t bcount, int wait);
 
@@ -106,7 +106,7 @@ tp_errno_t tp_ata_exec12(struct TP_ATA_DRIVE *handle, tp_ata_cmd12_t const *cmd,
  * \param[out] data Pointer to 512 byte buffer
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data);
+tp_errno_t tp_ata_get_identify(struct TP_ATA_HANDLE *handle, void *data);
 
 /**
  * \brief ATA IF-SEND
@@ -122,7 +122,7 @@ tp_errno_t tp_ata_get_identify(struct TP_ATA_DRIVE *handle, void *data);
  * \param[in] bcount Count of 512 byte blocks to transfer
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
+tp_errno_t tp_ata_if_send(struct TP_ATA_HANDLE *handle, uint8_t proto,
 			  uint16_t comid, void *data, uint8_t bcount);
 
 /**
@@ -139,7 +139,7 @@ tp_errno_t tp_ata_if_send(struct TP_ATA_DRIVE *handle, uint8_t proto,
  * \param[in] bcount Count of 512 byte blocks to transfer
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_ata_if_recv(struct TP_ATA_DRIVE *handle, uint8_t proto,
+tp_errno_t tp_ata_if_recv(struct TP_ATA_HANDLE *handle, uint8_t proto,
 			  uint16_t comid, void *data, uint8_t bcount);
 
 #endif

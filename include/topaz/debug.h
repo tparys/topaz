@@ -42,8 +42,8 @@ extern unsigned int tp_debug;
  * Dumps a segment of binary data to the screen in a human
  * readable way.
  *
- * \param[in] id Valid error identifier
- * \return Pointer to static buffer containing error message
+ * \param[in] data Pointer to binary data buffer
+ * \param[in] len length of binary data segment
  */
 void tp_debug_dump(void const *data, int len);
 
