@@ -64,8 +64,8 @@ def autogen(filename, cat_func, errno_func):
 
 # Autogenerate header file
 autogen('../../include/topaz/errno.h',
-        lambda x: '\n/* %s */\n\n' % x,
-        lambda x: '#define TP_ERR_%-15s 0x%08x /** %s */\n' % x)
+        lambda x: '/* %s */\n\n' % x,
+        lambda x: '  /** %s */\n  TP_ERR_%-15s = 0x%08x,\n\n' % (x[2], x[0], x[1]))
 
 # Autogenerate C data structures
 autogen('../../src/topaz/errno.c',
