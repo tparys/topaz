@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <topaz/topaz.h>
 #include <topaz/transport_ata.h>
+#include <topaz/tpm.h>
 
 /**
  * \brief Open Drive / Trusted Peripheral (TPer)
@@ -68,6 +69,12 @@ tp_handle_t *tp_open(char const *path)
   
   /* check for TPM */
   else if (tp_ata_probe_tpm(handle->ata) != 0)
+  {
+    rc = tp_errno;
+  }
+  
+  /* check for TPM protocols */
+  else if (tp_tpm_probe_proto(handle) != 0)
   {
     rc = tp_errno;
   }
