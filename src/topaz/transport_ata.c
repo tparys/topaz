@@ -30,6 +30,8 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <topaz/debug.h>
+#include <topaz/errno.h>
 #include <topaz/transport_ata.h>
 
 /**
@@ -42,7 +44,7 @@
  * \param[out] data Pointer to 512 byte buffer
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_ata_get_identify(struct TP_ATA_HANDLE *handle, void *data)
+tp_errno_t tp_ata_get_identify(struct tp_ata_handle *handle, void *data)
 {
   /* ATA12 Command - Identify Device (0xec) */
   tp_ata_cmd12_t cmd;
@@ -50,7 +52,41 @@ tp_errno_t tp_ata_get_identify(struct TP_ATA_HANDLE *handle, void *data)
   cmd.command     = 0xec;
   
   /* Off it goes */
+  TP_DEBUG(1) printf("Probe ATA Identify\n");
   return tp_ata_exec12(handle, &cmd, TP_ATA_OPER_READ, data, 1, 1);
+}
+
+/**
+ * \brief Probe ATA Device for TPM
+ *
+ * Check ATA Identify data for TPM presence
+ *
+ * \param[in] handle Device handle
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_ata_probe_tpm(struct tp_ata_handle *handle)
+{
+  uint16_t id_data[256];
+  
+  /* Query identify data */
+  tp_ata_get_identify(handle, id_data);
+  
+  /* Verify ATA version >= 8 */
+  TP_DEBUG(1) printf("Verifying ATA support\n");
+  if ((id_data[80] & ~((1 < 8) - 1)) == 0)
+  {
+    return tp_errno = TP_ERR_NO_TPM;
+  }
+  
+  /* Check for TPM presence */
+  TP_DEBUG(1) printf("Searching for TPM Fingerprint\n");
+  if ((id_data[48] & 0xC000) != 0x4000)
+  {
+    return tp_errno = TP_ERR_NO_TPM;
+  }
+  
+  /* looks ok */
+  return tp_errno = TP_ERR_SUCCESS;
 }
 
 /**
@@ -67,7 +103,7 @@ tp_errno_t tp_ata_get_identify(struct TP_ATA_HANDLE *handle, void *data)
  * \param[in] bcount Count of 512 byte blocks to transfer
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_ata_if_send(struct TP_ATA_HANDLE *handle, uint8_t proto,
+tp_errno_t tp_ata_if_send(struct tp_ata_handle *handle, uint8_t proto,
 			  uint16_t comid, void *data, uint8_t bcount)
 {
   /* Build ATA12 Command - Trusted Send (0x5e) */
@@ -97,7 +133,7 @@ tp_errno_t tp_ata_if_send(struct TP_ATA_HANDLE *handle, uint8_t proto,
  * \param[in] bcount Count of 512 byte blocks to transfer
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_ata_if_recv(struct TP_ATA_HANDLE *handle, uint8_t proto,
+tp_errno_t tp_ata_if_recv(struct tp_ata_handle *handle, uint8_t proto,
 			  uint16_t comid, void *data, uint8_t bcount)
 {
   /* Build ATA12 command - Trusted Receive (0x5c) */

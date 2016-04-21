@@ -49,6 +49,11 @@ struct
   { TP_ERR_NULL           , "NULL Pointer" },
   { TP_ERR_ALLOC          , "Error allocating memory" },
 
+  /* TPM Errors */
+
+  { TP_ERR_NO_TPM         , "Target drive does not contain a TPM" },
+  { TP_ERR_TPM_PROTO      , "TPM does not support a known protocol" },
+
   /* Tranport Errors */
 
   { TP_ERR_IOCTL          , "Failed to call ioctl" },

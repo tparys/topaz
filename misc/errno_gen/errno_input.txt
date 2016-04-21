@@ -7,6 +7,11 @@ INVALID : Invalid argument
 NULL : NULL Pointer
 ALLOC : Error allocating memory
 
+@TPM Errors
+
+NO_TPM : Target drive does not contain a TPM
+TPM_PROTO : TPM does not support a known protocol
+
 @Tranport Errors
 
 IOCTL : Failed to call ioctl

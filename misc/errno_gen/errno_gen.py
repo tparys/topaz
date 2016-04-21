@@ -1,6 +1,10 @@
 #!/usr/bin/python3
 
-category_mult = 0x1000
+# Ensure enumeration is at least 3 bytes,
+# to force compiler to use 32 bit int type
+# for error number enumeration
+category_mult = 0x10000
+
 errno_ids = []
 errno_next = 0
 

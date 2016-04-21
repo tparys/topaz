@@ -42,7 +42,7 @@
 #include <topaz/transport_ata.h>
 
 /** Linux device handle */
-struct TP_ATA_HANDLE
+struct tp_ata_handle
 {
   int fd; /** POSIX file descriptor */
 };
@@ -55,9 +55,9 @@ struct TP_ATA_HANDLE
  * \param[in] path Path to device
  * \return Pointer to new device, or NULL on error
  */
-struct TP_ATA_HANDLE *tp_ata_open(char const *path)
+struct tp_ata_handle *tp_ata_open(char const *path)
 {
-  struct TP_ATA_HANDLE *handle = NULL;
+  struct tp_ata_handle *handle = NULL;
   int rc, fd = -1;
   char in;
   
@@ -65,11 +65,12 @@ struct TP_ATA_HANDLE *tp_ata_open(char const *path)
    * First check that libata is playing nice ...
    */
   
-  /* open pesudofile in sysfs */ 
+  /* open pesudofile in sysfs */
+  TP_DEBUG(1) printf("Probe libata configuration\n");
   fd = open("/sys/module/libata/parameters/allow_tpm", O_RDONLY);
   if (fd == -1)
   {
-    rc = TP_ERR_OPEN;
+    rc = TP_ERR_SYSFS;
     goto cleanup;
   }
   
@@ -97,7 +98,7 @@ struct TP_ATA_HANDLE *tp_ata_open(char const *path)
   }
   
   /* allocate some memory for device handle */
-  handle = (struct TP_ATA_HANDLE*)calloc(sizeof(struct TP_ATA_HANDLE), 1);
+  handle = (struct tp_ata_handle*)calloc(sizeof(struct tp_ata_handle), 1);
   if (handle == NULL)
   {
     rc = TP_ERR_ALLOC;
@@ -105,6 +106,7 @@ struct TP_ATA_HANDLE *tp_ata_open(char const *path)
   }
   
   /* all done */
+  tp_errno = TP_ERR_SUCCESS;
   handle->fd = fd;
   return handle;
   
@@ -135,7 +137,7 @@ struct TP_ATA_HANDLE *tp_ata_open(char const *path)
  * \param[in] handle Device handle
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_ata_close(struct TP_ATA_HANDLE *handle)
+tp_errno_t tp_ata_close(struct tp_ata_handle *handle)
 {
   /* sanity check */
   if (handle == NULL)
@@ -162,7 +164,7 @@ tp_errno_t tp_ata_close(struct TP_ATA_HANDLE *handle)
  * \param[in] wait Timeout in seconds
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_ata_exec12(struct TP_ATA_HANDLE *handle, tp_ata_cmd12_t const *cmd,
+tp_errno_t tp_ata_exec12(struct tp_ata_handle *handle, tp_ata_cmd12_t const *cmd,
 			 tp_ata_oper_type_t optype, void *data,
 			 uint8_t bcount, int wait)
 {
