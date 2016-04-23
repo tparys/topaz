@@ -64,6 +64,12 @@ typedef enum
   /** TPM does not support a known protocol */
   TP_ERR_TPM_PROTO       = 0x00010001,
 
+  /** TPM using an unknown protocol version */
+  TP_ERR_TPM_VERSION     = 0x00010002,
+
+  /** Unrecognized SSC messaging type */
+  TP_ERR_TPM_SSC         = 0x00010003,
+
 /* Tranport Errors */
 
   /** Failed to call ioctl */

@@ -41,6 +41,7 @@
 #include <topaz/topaz.h>
 #include <topaz/transport_ata.h>
 #include <topaz/tpm.h>
+#include <topaz/discovery.h>
 
 /**
  * \brief Open Drive / Trusted Peripheral (TPer)
@@ -75,6 +76,12 @@ tp_handle_t *tp_open(char const *path)
   
   /* check for TPM protocols */
   else if (tp_tpm_probe_proto(handle) != 0)
+  {
+    rc = tp_errno;
+  }
+  
+  /* check for supported SSC's and SWG features */
+  else if (tp_probe_discovery(handle) != 0)
   {
     rc = tp_errno;
   }

@@ -1,12 +1,12 @@
-#ifndef TOPAZ_TPM_H
-#define TOPAZ_TPM_H
+#ifndef TOPAZ_L0_DISCOVERY_H
+#define TOPAZ_L0_DISCOVERY_H
 
 /*
- * Topaz - TPM API
+ * Topaz - Level 0 Discovery
  *
- * This file implements various APIs built upon the TPM's IF-SEND and
- * IF-RECV calls, and provides some low level reset capabilities for
- * identifying and resetting communications over TCG SWG channels.
+ * Implementation of the TCG SWG Discovery mechanism, which will allow the
+ * topaz library to determine which TCG standards are supported, and what
+ * their feature sets are.
  *
  * Copyright (c) 2016, T Parys
  * All rights reserved.
@@ -35,23 +35,32 @@
 #include <topaz/defs.h>
 
 /**
- * \brief Probe TPM Security Protocols
+ * \brief Probe Drive's SWG Features
  *
- * Scan for available protocols supported via IF-SEND / IF-RECV
+ * Scan for available TCG SWG protocols supported
  *
- * \param[in] path Target drive
+ * \param[in] Target drive
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_tpm_probe_proto(tp_handle_t *handle);
+tp_errno_t tp_probe_discovery(tp_handle_t *handle);
 
 /**
- * \brief Look up TPM Security Protocols
+ * \brief Parse SSC Feature Data (Format 1)
  *
- * Return human readable representation of TPM protocol
- *
- * \param[in] proto Protocol number
- * \return Pointer to static buffer describing protocol
+ * \param[in] Target drive
+ * \param[in] Feature Data
+ * \return 0 on success, error code indicating failure
  */
-char const *tp_tpm_lookup_proto(unsigned char proto);
+tp_errno_t tp_discovery_ssc1(tp_handle_t *handle, void const *feat_data);
+
+/**
+ * \brief Parse SSC Feature Data (Format 2)
+ *
+ * \param[in] Target drive
+ * \param[in] Feature Data
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_discovery_ssc2(tp_handle_t *handle, void const *feat_data);
+
 
 #endif

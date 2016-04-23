@@ -39,7 +39,7 @@
  *
  * Scan for available protocols supported via IF-SEND / IF-RECV
  *
- * \param[in] path Path to target device
+ * \param[in] path Target drive
  * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_tpm_probe_proto(tp_handle_t *handle)

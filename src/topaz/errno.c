@@ -53,6 +53,8 @@ struct
 
   { TP_ERR_NO_TPM         , "Target drive does not contain a TPM" },
   { TP_ERR_TPM_PROTO      , "TPM does not support a known protocol" },
+  { TP_ERR_TPM_VERSION    , "TPM using an unknown protocol version" },
+  { TP_ERR_TPM_SSC        , "Unrecognized SSC messaging type" },
 
   /* Tranport Errors */
 

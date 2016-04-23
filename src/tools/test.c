@@ -7,9 +7,9 @@
 int main()
 {
   tp_handle_t *handle = NULL;
-  char buf[512];
+  char buf[512] = {0};
   
-  tp_debug = 4;
+  tp_debug = 3;
   handle = tp_open("/dev/sdc");
   if (!handle)
   {
@@ -17,10 +17,6 @@ int main()
     return 1;
   }
   
-  if (tp_ata_if_recv(handle->ata, 0, 0, buf, 1))
-  {
-    printf("ATA fail\n");
-  }
   
   tp_close(handle);
   handle = NULL;

@@ -37,19 +37,19 @@
 #include <stdint.h>
 #include <topaz/errno.h>
 
-/** Messaging sets supported by drive */
+/** SSCs (Messaging sets) supported by drive */
 typedef enum
 {
   /** Messaging set is unknown */
-  TP_MSG_UNKNOWN    = 0,
+  TP_SSC_UNKNOWN    = 0,
   
   /** Enterprise SSC */
-  TP_MSG_ENTERPRISE = 1,
+  TP_SSC_ENTERPRISE = 1,
   
   /** Opal SSC (and everything else) */
-  TP_MSG_OPAL       = 2
+  TP_SSC_OPAL       = 2
 
-} tp_msg_type_t;
+} tp_ssc_type_t;
 
 /** Trusted Peripheral (TPer) handle */
 typedef struct
@@ -64,7 +64,10 @@ typedef struct
   uint32_t com_id;
   
   /** Supported messaging set */
-  tp_msg_type_t msg_type;
+  tp_ssc_type_t ssc_type;
+  
+  /** LBA alignment granularity */
+  uint64_t lba_align;
   
 } tp_handle_t;
 

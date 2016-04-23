@@ -5,4 +5,5 @@ add_library(topaz
   transport_ata_sgio.c
   topaz.c
   tpm.c
+  discovery.c
 )
