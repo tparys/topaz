@@ -55,6 +55,7 @@ struct
   { TP_ERR_TPM_PROTO      , "TPM does not support a known protocol" },
   { TP_ERR_TPM_VERSION    , "TPM using an unknown protocol version" },
   { TP_ERR_TPM_SSC        , "Unrecognized SSC messaging type" },
+  { TP_ERR_TPM_COMID_RESET, "Cannot reset specified ComID" },
 
   /* Tranport Errors */
 

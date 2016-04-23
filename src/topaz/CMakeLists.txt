@@ -4,6 +4,6 @@ add_library(topaz
   transport_ata.c
   transport_ata_sgio.c
   topaz.c
-  tpm.c
+  security.c
   discovery.c
 )

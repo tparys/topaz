@@ -70,6 +70,9 @@ typedef enum
   /** Unrecognized SSC messaging type */
   TP_ERR_TPM_SSC         = 0x00010003,
 
+  /** Cannot reset specified ComID */
+  TP_ERR_TPM_COMID_RESET = 0x00010004,
+
 /* Tranport Errors */
 
   /** Failed to call ioctl */

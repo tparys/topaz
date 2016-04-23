@@ -1,9 +1,10 @@
 /*
- * Topaz - TPM API
+ * Topaz - TPM Security API
  *
- * This file implements various APIs built upon the TPM's IF-SEND and
- * IF-RECV calls, and provides some low level reset capabilities for
- * identifying and resetting communications over TCG SWG channels.
+ * This file implements various Security Protocols / APIs built upon the TPM's
+ * IF-SEND and IF-RECV calls. In practice, this can identify a TCG compliant
+ * SED, as well as providing some low level reset capabilities, and other
+ * miscellaneous capabilities.
  *
  * Copyright (c) 2016, T Parys
  * All rights reserved.
@@ -29,8 +30,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define _BSD_SOURCE
 #include <stdio.h>
-#include <topaz/tpm.h>
+#include <endian.h>
+#include <topaz/security.h>
 #include <topaz/transport_ata.h>
 #include <topaz/debug.h>
 
@@ -39,10 +42,10 @@
  *
  * Scan for available protocols supported via IF-SEND / IF-RECV
  *
- * \param[in] path Target drive
+ * \param[in] handle Target drive
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_tpm_probe_proto(tp_handle_t *handle)
+tp_errno_t tp_probe_security(tp_handle_t *handle)
 {
   unsigned proto_count, has_tcg = 0, i;
   unsigned char buf[512];
@@ -76,7 +79,7 @@ tp_errno_t tp_tpm_probe_proto(tp_handle_t *handle)
     
     TP_DEBUG(2)
     {
-      printf("  (0x%02x) %s\n", proto, tp_tpm_lookup_proto(proto));
+      printf("  (0x%02x) %s\n", proto, tp_security_proto_lookup(proto));
     }
   }
   
@@ -97,7 +100,7 @@ tp_errno_t tp_tpm_probe_proto(tp_handle_t *handle)
  * \param[in] proto Protocol number
  * \return Pointer to static buffer describing protocol
  */
-char const *tp_tpm_lookup_proto(unsigned char proto)
+char const *tp_security_proto_lookup(unsigned char proto)
 {
   if (proto == 0)
   {
@@ -131,4 +134,42 @@ char const *tp_tpm_lookup_proto(unsigned char proto)
   {
     return "Reserved";
   }
+}
+
+/**
+ * \brief Communication Stack Reset
+ *
+ * Function to reset state of communication ID within TCG SWG interface
+ *
+ * \param[in] handle Target drive
+ * \param[in] com_id Communication ID to reset
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_security_comid_reset(tp_handle_t *handle, uint32_t com_id)
+{
+  unsigned char block[TP_ATA_BLOCK_SIZE] = {0};
+  tp_comid_req_t *cmd = (tp_comid_req_t*)block;
+  tp_comid_resp_t *resp = (tp_comid_resp_t*)block;
+  
+  TP_DEBUG(1) printf("Reset ComID 0x%x\n", com_id);
+  
+  /* Cook up the COMID management packet */
+  cmd->com_id = htobe16(com_id);
+  cmd->req_code = htobe32(0x02);     /* STACK_RESET */
+  
+  /* Hit the reset */
+  if ((tp_ata_if_send(handle->ata, 2, com_id, block, 1) != 0) ||
+      (tp_ata_if_recv(handle->ata, 2, com_id, block, 1) != 0))
+  {
+    return tp_errno;
+  }
+  
+  /* Check result */
+  if ((htobe32(resp->avail_data) != 4) || (htobe32(resp->failed) != 0))
+  {
+    return tp_errno = TP_ERR_TPM_COMID_RESET;
+  }
+  
+  TP_DEBUG(2) printf("  Completed\n");
+  return tp_errno = TP_ERR_SUCCESS;
 }

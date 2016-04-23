@@ -1,12 +1,13 @@
-#ifndef TOPAZ_TPM_H
-#define TOPAZ_TPM_H
+#ifndef TOPAZ_SECURITY_H
+#define TOPAZ_SECURITY_H
 
 /*
- * Topaz - TPM API
+ * Topaz - TPM Security API
  *
- * This file implements various APIs built upon the TPM's IF-SEND and
- * IF-RECV calls, and provides some low level reset capabilities for
- * identifying and resetting communications over TCG SWG channels.
+ * This file implements various Security Protocols / APIs built upon the TPM's
+ * IF-SEND and IF-RECV calls. In practice, this can identify a TCG compliant
+ * SED, as well as providing some low level reset capabilities, and other
+ * miscellaneous capabilities.
  *
  * Copyright (c) 2016, T Parys
  * All rights reserved.
@@ -34,15 +35,33 @@
 
 #include <topaz/defs.h>
 
+/** HANDLE_COMID_REQUEST Command */
+typedef struct
+{
+  uint16_t com_id;
+  uint16_t com_id_ext;
+  uint32_t req_code;
+} tp_comid_req_t;
+
+/** HANDLE_COMID_REQUEST Response */
+typedef struct
+{
+  uint16_t com_id;
+  uint16_t com_id_ext;
+  uint32_t req_code;
+  uint32_t avail_data;
+  uint32_t failed;
+} tp_comid_resp_t;
+
 /**
  * \brief Probe TPM Security Protocols
  *
  * Scan for available protocols supported via IF-SEND / IF-RECV
  *
- * \param[in] path Target drive
+ * \param[in] handle Target drive
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_tpm_probe_proto(tp_handle_t *handle);
+tp_errno_t tp_probe_security(tp_handle_t *handle);
 
 /**
  * \brief Look up TPM Security Protocols
@@ -52,6 +71,17 @@ tp_errno_t tp_tpm_probe_proto(tp_handle_t *handle);
  * \param[in] proto Protocol number
  * \return Pointer to static buffer describing protocol
  */
-char const *tp_tpm_lookup_proto(unsigned char proto);
+char const *tp_security_proto_lookup(unsigned char proto);
+
+/**
+ * \brief Communication Stack Reset
+ *
+ * Function to reset state of communication ID within TCG SWG interface
+ *
+ * \param[in] handle Target drive
+ * \param[in] com_id Communication ID to reset
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_security_comid_reset(tp_handle_t *handle, uint32_t com_id);
 
 #endif

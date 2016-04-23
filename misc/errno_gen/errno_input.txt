@@ -13,6 +13,7 @@ NO_TPM : Target drive does not contain a TPM
 TPM_PROTO : TPM does not support a known protocol
 TPM_VERSION : TPM using an unknown protocol version
 TPM_SSC : Unrecognized SSC messaging type
+TPM_COMID_RESET : Cannot reset specified ComID
 
 @Tranport Errors
 

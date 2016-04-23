@@ -40,7 +40,7 @@
 #include <stdlib.h>
 #include <topaz/topaz.h>
 #include <topaz/transport_ata.h>
-#include <topaz/tpm.h>
+#include <topaz/security.h>
 #include <topaz/discovery.h>
 
 /**
@@ -74,14 +74,21 @@ tp_handle_t *tp_open(char const *path)
     rc = tp_errno;
   }
   
-  /* check for TPM protocols */
-  else if (tp_tpm_probe_proto(handle) != 0)
+  /* check for TPM security protocols */
+  else if (tp_probe_security(handle) != 0)
   {
     rc = tp_errno;
   }
   
   /* check for supported SSC's and SWG features */
   else if (tp_probe_discovery(handle) != 0)
+  {
+    rc = tp_errno;
+  }
+  
+  /* reset the SSC's ComID, if possible */
+  else if ((handle->has_reset) &&
+	   (tp_security_comid_reset(handle, handle->com_id) != 0))
   {
     rc = tp_errno;
   }
