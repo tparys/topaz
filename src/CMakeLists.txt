@@ -1,1 +1,1 @@
-subdirs(topaz tools)
+subdirs(topaz tools test)

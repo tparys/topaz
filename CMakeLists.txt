@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 2.4)
 
 ###
+# External Dependencies
+#
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CHECK check)
+
+###
 # Doxygen target
 #
 
