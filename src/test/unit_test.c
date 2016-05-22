@@ -138,6 +138,127 @@ START_TEST(t_syn_uint)
 }
 END_TEST
 
+START_TEST(t_syn_sint)
+{
+  /* set up buffer */
+  char raw[64];
+  tp_buffer_t buf;
+  buf.ptr = raw;
+  buf.cur_len = 0;
+  buf.total_len = sizeof(raw);
+  
+  /* smallest tiny atom */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_sint(&buf, 0);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 1);
+  ck_assert_str_eq(raw, "\x40");
+
+  /* biggest tiny atom (pos) */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_sint(&buf, 0x1f);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 1);
+  ck_assert_str_eq(raw, "\x5f");
+
+  /* biggest tiny atom (pos) */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_sint(&buf, -0x20);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 1);
+  ck_assert_str_eq(raw, "\x60");
+
+  /* smallest small atom (pos) */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_sint(&buf, 0x20);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 2);
+  ck_assert_str_eq(raw, "\x91\x20");
+  
+  /* smallest small atom (neg) */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_sint(&buf, -0x21);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 2);
+  ck_assert_str_eq(raw, "\x91\xdf");
+
+  /* small atom (pos) */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_sint(&buf, 0x7fff);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 3);
+  ck_assert_str_eq(raw, "\x92\x7f\xff");
+  
+  /* small atom (pos) */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_sint(&buf, -0x8000);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 3);
+  ck_assert_str_eq(raw, "\x92\x80\x00");
+}
+END_TEST
+
+START_TEST(t_syn_bin)
+{
+  /* set up buffer */
+  char raw[2052], raw2[2048];
+  tp_buffer_t buf;
+  buf.ptr = raw;
+  buf.total_len = sizeof(raw);
+  memset(raw2, 0, sizeof(raw2));
+  
+  /* small - 0 bytes */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_bin(&buf, raw2, 0);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 1);
+  ck_assert_str_eq(raw, "\xa0");
+  
+  /* small - 15 bytes */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_bin(&buf, raw2, 15);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 16);
+  ck_assert_str_eq(raw, "\xaf");
+  
+  /* medium - 16 bytes */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_bin(&buf, raw2, 16);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 18);
+  ck_assert_str_eq(raw, "\xd0\x10");
+  
+  /* medium - 2047 bytes */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_bin(&buf, raw2, 2047);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 2049);
+  ck_assert_str_eq(raw, "\xd7\xff");
+  
+  /* long - 2048 bytes */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_bin(&buf, raw2, 2048);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 2052);
+  ck_assert_int_eq((unsigned char)raw[0], 0xe2);
+  ck_assert_int_eq((unsigned char)raw[1], 0x00);
+  ck_assert_int_eq((unsigned char)raw[2], 0x08);
+  ck_assert_int_eq((unsigned char)raw[3], 0x00);
+}
+END_TEST
+
 /* Unit Test Automation */
 
 Suite *cc_suite(void)
@@ -158,6 +279,8 @@ Suite *cc_suite(void)
   /* Binary Syntax */
   TCase *tc_syn = tcase_create("Syntax");
   tcase_add_test(tc_syn, t_syn_uint);
+  tcase_add_test(tc_syn, t_syn_sint);
+  tcase_add_test(tc_syn, t_syn_bin);
   suite_add_tcase(s, tc_syn);
   
   return s;
