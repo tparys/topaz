@@ -48,6 +48,7 @@ struct
   { TP_ERR_INVALID        , "Invalid argument" },
   { TP_ERR_NULL           , "NULL Pointer" },
   { TP_ERR_ALLOC          , "Error allocating memory" },
+  { TP_ERR_SPACE          , "Insufficient space for requested operation" },
 
   /* TPM Errors */
 

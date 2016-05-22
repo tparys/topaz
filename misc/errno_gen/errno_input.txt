@@ -6,6 +6,7 @@ CLOSE : Error opening file
 INVALID : Invalid argument
 NULL : NULL Pointer
 ALLOC : Error allocating memory
+SPACE : Insufficient space for requested operation
 
 @TPM Errors
 

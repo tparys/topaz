@@ -56,6 +56,9 @@ typedef enum
   /** Error allocating memory */
   TP_ERR_ALLOC           = 0x00000006,
 
+  /** Insufficient space for requested operation */
+  TP_ERR_SPACE           = 0x00000007,
+
 /* TPM Errors */
 
   /** Target drive does not contain a TPM */
