@@ -7,6 +7,7 @@ INVALID : Invalid argument
 NULL : NULL Pointer
 ALLOC : Error allocating memory
 SPACE : Insufficient space for requested operation
+REPRESENT : No valid representation for datatype
 
 @TPM Errors
 

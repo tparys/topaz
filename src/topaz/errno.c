@@ -49,6 +49,7 @@ struct
   { TP_ERR_NULL           , "NULL Pointer" },
   { TP_ERR_ALLOC          , "Error allocating memory" },
   { TP_ERR_SPACE          , "Insufficient space for requested operation" },
+  { TP_ERR_REPRESENT      , "No valid representation for datatype" },
 
   /* TPM Errors */
 

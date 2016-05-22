@@ -31,13 +31,13 @@
 #include <topaz/buffer.h>
 
 /**
- * \brief Add buffer 
+ * \brief Add to buffer 
  *
  * Add data to pre-sized data buffer.
  *
  * \param[in,out] buf Target data buffer
  * \param[in] src Source data buffer
- * \param[in] len src_Length of source data buffer
+ * \param[in] src_len Length of source data buffer
  * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_buf_add(tp_buffer_t *tgt, void const *src, size_t src_len)

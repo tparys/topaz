@@ -4,18 +4,15 @@
 #include <check.h>
 #include <topaz/topaz.h>
 #include <topaz/buffer.h>
+#include <topaz/syntax.h>
 
 /* Unit Tests for errno data type */
 
-START_TEST(cc_errno_size)
+START_TEST(t_cc_errno)
 {
-  ck_assert_msg(sizeof(tp_errno_t) == 4,
-    "Expected tp_errno_t to be 4 bytes in size");
-}
-END_TEST
-
-START_TEST(cc_errno_sign)
-{
+  /* compiler *should* match these definitions ... */
+  
+  ck_assert_int_eq(sizeof(tp_errno_t), 4);
   ck_assert_msg((tp_errno_t)0 < (tp_errno_t)-1,
     "Expected tp_errno_t to be unsigned");
 }
@@ -23,7 +20,7 @@ END_TEST
 
 /* Unit Tests for fixed length data buffers */
 
-START_TEST(cc_buf_null)
+START_TEST(t_buf_null)
 {
   /* set up buffer */
   char buf[2];
@@ -55,7 +52,7 @@ START_TEST(cc_buf_null)
 }
 END_TEST
 
-START_TEST(cc_buf_bounds)
+START_TEST(t_buf_bounds)
 {
   /* set up buffer */
   char buf[2];
@@ -82,23 +79,86 @@ START_TEST(cc_buf_bounds)
 }
 END_TEST
 
+/* Unit Tests for binary syntax */
+
+START_TEST(t_syn_uint)
+{
+  int i;
+  
+  /* set up buffer */
+  char raw[64];
+  tp_buffer_t buf;
+  buf.ptr = raw;
+  buf.cur_len = 0;
+  buf.total_len = sizeof(raw);
+  
+  /* smallest tiny atom */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_uint(&buf, 0);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 1);
+  ck_assert_int_eq(raw[0], 0);
+
+  /* biggest tiny atom */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_uint(&buf, 0x3f);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 1);
+  ck_assert_str_eq(raw, "\x3f");
+
+  /* smallest small atom */
+  buf.cur_len = 0;
+  memset(raw, 0, sizeof(raw));
+  tp_syn_enc_uint(&buf, 0x40);
+  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+  ck_assert_int_eq(buf.cur_len, 2);
+  ck_assert_str_eq(raw, "\x81\x40");
+  
+  /* small atom boundaries */
+  for (i = 1; i < 8; i++)
+  {
+    uint64_t num = 1UL << (8 * i);
+    
+    /* before boundary */   
+    buf.cur_len = 0;
+    memset(raw, 0, sizeof(raw));
+    tp_syn_enc_uint(&buf, num - 1);
+    ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+    ck_assert_int_eq(buf.cur_len, i + 1);
+    
+    /* after boundary */   
+    buf.cur_len = 0;
+    memset(raw, 0, sizeof(raw));
+    tp_syn_enc_uint(&buf, num);
+    ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
+    ck_assert_int_eq(buf.cur_len, i + 2);
+  }
+}
+END_TEST
+
 /* Unit Test Automation */
 
 Suite *cc_suite(void)
 {
   Suite *s = suite_create("Topaz");
   
-  /* Datatype tests */
-  TCase *tc_errno = tcase_create("Errno Datatype");
-  tcase_add_test(tc_errno, cc_errno_size);
-  tcase_add_test(tc_errno, cc_errno_sign);
+  /* Compiler */
+  TCase *tc_errno = tcase_create("Compiler");
+  tcase_add_test(tc_errno, t_cc_errno);
   suite_add_tcase(s, tc_errno);
   
-  /* Datatype tests */
+  /* Static Buffers */
   TCase *tc_buf = tcase_create("Data Buffers");
-  tcase_add_test(tc_errno, cc_buf_null);
-  tcase_add_test(tc_errno, cc_buf_bounds);
+  tcase_add_test(tc_errno, t_buf_null);
+  tcase_add_test(tc_errno, t_buf_bounds);
   suite_add_tcase(s, tc_buf);
+  
+  /* Binary Syntax */
+  TCase *tc_syn = tcase_create("Syntax");
+  tcase_add_test(tc_syn, t_syn_uint);
+  suite_add_tcase(s, tc_syn);
   
   return s;
 }
@@ -108,7 +168,7 @@ int main (void)
   int number_failed;
   Suite *s = cc_suite();
   SRunner *sr = srunner_create (s);
-  srunner_run_all (sr, CK_NORMAL);
+  srunner_run_all (sr, CK_VERBOSE);
   number_failed = srunner_ntests_failed (sr);
   srunner_free (sr);
   return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;

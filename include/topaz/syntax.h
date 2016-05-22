@@ -1,10 +1,12 @@
-#ifndef TOPAZ_BUFFER_H
-#define TOPAZ_BUFFER_H
+#ifndef TOPAZ_SYNTAX_H
+#define TOPAZ_SYNTAX_H
 
 /*
- * Topaz - Data Buffer
+ * Topaz - SWG Binary Syntax
  *
- * Functions and routines for manipulating pre-sized static data buffers.
+ * Implementation of the TCG Storage Working Group (SWG) binary syntax, as
+ * outlined in the SWG Core Specification, and as used within the TCG Opal,
+ * Enterprise, and other SED interface standards.
  *
  * Copyright (c) 2016, T Parys
  * All rights reserved.
@@ -30,69 +32,65 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stddef.h>
 #include <stdint.h>
-#include <topaz/errno.h>
+#include <topaz/buffer.h>
 
 /**
- * \brief Container for static buffers
- */
-typedef struct
-{
-  /** Pointer to start of data buffer */
-  void *ptr;
-  
-  /** Length of data buffer */
-  size_t total_len;
-  
-  /** Length of current data */
-  size_t cur_len;
-  
-} tp_buffer_t;
-
-/**
- * \brief Add to buffer 
+ * \brief Encode Tiny Atom
  *
- * Add data to pre-sized data buffer.
+ * Encode signed or unsigned 6 bit integer into a 1 byte Atom.
  *
  * \param[in,out] buf Target data buffer
- * \param[in] src Source data buffer
- * \param[in] src_len Length of source data buffer
+ * \param[in] sign_flag Indicate signed, rather than unsigned data type
+ * \param[in] value Input data value (only low 6 bits used)
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_buf_add(tp_buffer_t *tgt, void const *src, size_t src_len);
+tp_errno_t tp_syn_enc_tiny(tp_buffer_t *tgt, int sign_flag, uint64_t value);
 
 /**
- * \brief Add buffer Byte
+ * \brief Encode Atom
  *
- * Add one byte to pre-sized data buffer.
+ * Encode binary or integer data to binary syntax
  *
  * \param[in,out] buf Target data buffer
- * \param[in] byte Byte to add
+ * \param[in] bin_flag Indicate binary data
+ * \param[in] sign_flag Indicate signed, rather than unsigned data type
+ * \param[in] ptr Data to encode as atom
+ * \param[in] len Data length
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_buf_add_byte(tp_buffer_t *tgt, uint8_t byte);
+tp_errno_t tp_syn_enc_atom(tp_buffer_t *tgt, int bin_flag, int sign_flag,
+			   void const *ptr, size_t len);
 
 /**
- * \brief Add buffer string
+ * \brief Encode Unsigned Integer
  *
- * Append string to pre-sized data buffer (excluding NULL Terminator)
+ * Encode unsigned integer into SWG binary syntax 
  *
  * \param[in,out] buf Target data buffer
- * \param[in] src NULL terminated data to append
- * \return 0 on success, error code indicating failure
+ * \param[in] value Input data value
  */
-tp_errno_t tp_buf_add_str(tp_buffer_t *tgt, char *src);
+tp_errno_t tp_syn_enc_uint(tp_buffer_t *tgt, uint64_t value);
 
 /**
- * \brief Append data buffer to another
+ * \brief Encode Signed Integer
  *
- * Combine contents of source data to end of target.
+ * Encode signed integer into SWG binary syntax 
  *
  * \param[in,out] buf Target data buffer
- * \param[in] src Source data buffer
- * \return 0 on success, error code indicating failure
+ * \param[in] value Input data value
  */
-tp_errno_t tp_buf_add_buf(tp_buffer_t *tgt, tp_buffer_t const *src);
+tp_errno_t tp_syn_enc_sint(tp_buffer_t *tgt, int64_t value);
+
+/**
+ * \brief Encode Binary Data
+ *
+ * Encode binary data SWG binary syntax
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] ptr Data to encode as atom
+ * \param[in] len Data length
+ */
+tp_errno_t tp_syn_enc_bin(tp_buffer_t *tgt, void const *ptr, size_t len);
 
 #endif
