@@ -49,7 +49,13 @@ struct
   { TP_ERR_NULL           , "NULL Pointer" },
   { TP_ERR_ALLOC          , "Error allocating memory" },
   { TP_ERR_SPACE          , "Insufficient space for requested operation" },
-  { TP_ERR_REPRESENT      , "No valid representation for datatype" },
+
+  /* SWG Binary Syntax Errors */
+
+  { TP_ERR_SYNTAX         , "Unexpected token in binary syntax" },
+  { TP_ERR_DATATYPE       , "Wrong datatype in parsing stream" },
+  { TP_ERR_REPRESENT      , "No valid representation for data" },
+  { TP_ERR_BUFFER_END     , "Unexpected end of data buffer while parsing" },
 
   /* TPM Errors */
 

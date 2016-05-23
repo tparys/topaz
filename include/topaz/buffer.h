@@ -42,11 +42,14 @@ typedef struct
   /** Pointer to start of data buffer */
   void *ptr;
   
-  /** Length of data buffer */
-  size_t total_len;
+  /** Maximum length of data segment */
+  size_t max_len;
   
-  /** Length of current data */
+  /** Current size of data segment */
   size_t cur_len;
+  
+  /** When parsing, how many bytes have been used? */
+  size_t parse_idx;
   
 } tp_buffer_t;
 

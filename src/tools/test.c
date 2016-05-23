@@ -7,7 +7,7 @@
 int main()
 {
   tp_handle_t *handle = NULL;
-  char buf[512] = {0};
+  /* char buf[512] = {0}; */
   
   tp_debug = 2;
   handle = tp_open("/dev/sdc");

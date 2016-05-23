@@ -35,6 +35,23 @@
 #include <stdint.h>
 #include <topaz/buffer.h>
 
+/** SWG Atom decoding information */
+typedef struct
+{
+  /** Number of non-data header bytes prior to data */
+  unsigned int header_bytes;
+
+  /** Number of data header bytes following header */
+  unsigned int data_bytes;
+  
+  /** Indicate data is a binary blob */
+  unsigned int bin_flag;
+  
+  /** If not binary, whether integer is signed */
+  unsigned int sign_flag;
+  
+} tp_syn_atom_info_t;
+
 /**
  * \brief Encode Tiny Atom
  *
@@ -69,6 +86,7 @@ tp_errno_t tp_syn_enc_atom(tp_buffer_t *tgt, int bin_flag, int sign_flag,
  *
  * \param[in,out] buf Target data buffer
  * \param[in] value Input data value
+ * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_syn_enc_uint(tp_buffer_t *tgt, uint64_t value);
 
@@ -79,6 +97,7 @@ tp_errno_t tp_syn_enc_uint(tp_buffer_t *tgt, uint64_t value);
  *
  * \param[in,out] buf Target data buffer
  * \param[in] value Input data value
+ * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_syn_enc_sint(tp_buffer_t *tgt, int64_t value);
 
@@ -90,7 +109,32 @@ tp_errno_t tp_syn_enc_sint(tp_buffer_t *tgt, int64_t value);
  * \param[in,out] buf Target data buffer
  * \param[in] ptr Data to encode as atom
  * \param[in] len Data length
+ * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_syn_enc_bin(tp_buffer_t *tgt, void const *ptr, size_t len);
+
+/**
+ * \brief Decode Atom Header
+ *
+ * Decode header data from datastream, and determine type of next atom,
+ * ensuring all bytes are accounted for in buffer. Note, this function
+ * does NOT advance any pointers within the buffer 
+ *
+ * \param[out] header Data encoding metadata
+ * \param[in] buf Input data stream
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_dec_header(tp_syn_atom_info_t *header, tp_buffer_t const *tgt);
+
+/**
+ * \brief Decode Unsigned Integer
+ *
+ * Decode unsigned integer from data buffer and advance pointers.
+ *
+ * \param[out] value Parsed value
+ * \param[in,out] buf Input data stream
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_dec_uint(uint64_t *value, tp_buffer_t *tgt);
 
 #endif

@@ -95,7 +95,7 @@ tp_errno_t tp_syn_enc_atom(tp_buffer_t *tgt, int bin_flag, int sign_flag,
     header[0] |= (sign_flag & 0x01) << 4;
 
     /* encode length */
-    header[0] |= len & 0xff;
+    header[0] |= len & 0x0f;
   }
   else if (len < 2048)
   {
@@ -152,6 +152,7 @@ tp_errno_t tp_syn_enc_atom(tp_buffer_t *tgt, int bin_flag, int sign_flag,
  *
  * \param[in,out] buf Target data buffer
  * \param[in] value Input data value
+ * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_syn_enc_uint(tp_buffer_t *tgt, uint64_t value)
 {
@@ -182,6 +183,7 @@ tp_errno_t tp_syn_enc_uint(tp_buffer_t *tgt, uint64_t value)
  *
  * \param[in,out] buf Target data buffer
  * \param[in] value Input data value
+ * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_syn_enc_sint(tp_buffer_t *tgt, int64_t value)
 {
@@ -235,8 +237,181 @@ tp_errno_t tp_syn_enc_sint(tp_buffer_t *tgt, int64_t value)
  * \param[in,out] buf Target data buffer
  * \param[in] ptr Data to encode as atom
  * \param[in] len Data length
+ * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_syn_enc_bin(tp_buffer_t *tgt, void const *ptr, size_t len)
 {
   return tp_syn_enc_atom(tgt, 1, 0, ptr, len);
+}
+
+/**
+ * \brief Decode Atom Header
+ *
+ * Decode header data from datastream, and determine type of next atom,
+ * ensuring all bytes are accounted for in buffer. Note, this function
+ * does NOT advance any pointers within the buffer 
+ *
+ * \param[out] header Data encoding metadata
+ * \param[in] buf Input data stream
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_dec_header(tp_syn_atom_info_t *header, tp_buffer_t const *tgt)
+{
+  uint8_t *atom;
+  size_t bytes_left;
+
+  /* check for NULL pointers */
+  if ((header == NULL) || (tgt == NULL) || (tgt->ptr == NULL))
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  
+  /* otherwise safe to use this pointer */
+  atom = (uint8_t*)tgt->ptr;
+  bytes_left = tgt->cur_len - tgt->parse_idx;
+  
+  /* check that there's something to parse */
+  if (bytes_left < 1)
+  {
+    return tp_errno = TP_ERR_BUFFER_END;
+  }
+  
+  /* figure out encoding ... */
+  
+  /* tiny atoms start with a binary "0" */
+  if ((atom[0] & 0x80) == 0x00)
+  {
+    /* header combined into data byte */
+    header->header_bytes = 0;
+    header->data_bytes = 1;
+    
+    /* always integer, sign in bit 6 */
+    header->bin_flag = 0;
+    header->sign_flag = (atom[0] >> 6) & 0x01;
+  }
+  
+  /* small atoms start with a binary "10" */
+  else if ((atom[0] & 0xc0) == 0x80)
+  {
+    /* one header byte */
+    header->header_bytes = 1;
+    
+    /* binary / sign flags in bits 5 & 4 */
+    header->bin_flag = (atom[0] >> 5) & 0x01;
+    header->sign_flag = (atom[0] >> 4) & 0x01;
+    
+    /* data byte count in bits 0-3 */
+    header->data_bytes = (atom[0] & 0x0f);
+  }
+  
+  /* medium atoms start with a binary "110" */
+  else if ((atom[0] & 0xe0) == 0xc0)
+  {
+    /* two header bytes */
+    header->header_bytes = 2;
+    if (bytes_left < 2)
+    {
+      return tp_errno = TP_ERR_BUFFER_END;
+    }
+    
+    /* binary / sign flags in bits 4 & 3 of first byte */
+    header->bin_flag = (atom[0] >> 4) & 0x01;
+    header->sign_flag = (atom[0] >> 3) & 0x01;
+    
+    /* 11 bit data byte count */
+    header->data_bytes = (atom[0] & 0x07) << 8;
+    header->data_bytes += atom[1];
+  }
+  
+  /* long atoms start with a binary "111000" (incl. reserved bits) */
+  else if ((atom[0] & 0xfc) == 0xe0)
+  {
+    /* four header bytes */
+    header->header_bytes = 4;
+    if (bytes_left < 4)
+    {
+      return tp_errno = TP_ERR_BUFFER_END;
+    }
+    
+    /* binary / sign flags in bits 1 & 0 of first byte */
+    header->bin_flag = (atom[0] >> 1) & 0x01;
+    header->sign_flag = atom[0] & 0x01;
+    
+    /* 24 bit data byte count */
+    header->data_bytes = atom[1] << 16;
+    header->data_bytes += atom[2] << 8;
+    header->data_bytes += atom[3];
+  }
+  
+  /* ensure data bytes exist */
+  if (bytes_left < (header->header_bytes + header->data_bytes))
+  {
+    return tp_errno = TP_ERR_BUFFER_END;
+  }
+  
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief Decode Unsigned Integer
+ *
+ * Decode unsigned integer from data buffer and advance pointers.
+ *
+ * \param[out] value Parsed value
+ * \param[in,out] buf Input data stream
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_dec_uint(uint64_t *value, tp_buffer_t *tgt)
+{
+  tp_syn_atom_info_t header_info;
+  uint8_t *data_ptr, raw[8];
+  
+  /* check for NULL pointers */
+  if ((value == NULL) || (tgt == NULL) || (tgt->ptr == NULL))
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  data_ptr = (uint8_t*)tgt->ptr;
+  
+  /* figure out what's there */
+  if (tp_syn_dec_header(&header_info, tgt))
+  {
+    return tp_errno;
+  }
+  
+  /* ensure it's a valid unsigned int */
+  if ((header_info.bin_flag == 1) ||
+      (header_info.sign_flag == 1))
+  {
+    return tp_errno = TP_ERR_DATATYPE;
+  }
+  if ((header_info.data_bytes == 0) ||
+      (header_info.data_bytes > 8))
+  {
+    return tp_errno = TP_ERR_REPRESENT;
+  }
+  
+  /* trivial case (tiny atom) */
+  if (header_info.header_bytes == 0)
+  {
+    *value = *data_ptr & 0x3f;
+    tgt->parse_idx += 1;
+    return TP_ERR_SUCCESS;
+  }
+  
+  /* copy data out */
+  memset(raw, 0, 8);
+  memcpy(raw + 8 - header_info.data_bytes,
+	 data_ptr + header_info.header_bytes,
+	 header_info.data_bytes);
+  memcpy(value, raw, 8);
+  
+  /* byteflip to native endianess */
+  *value = be64toh(*value);
+  
+  /* advance pointers */
+  tgt->parse_idx += header_info.header_bytes;
+  tgt->parse_idx += header_info.data_bytes;
+  
+  return tp_errno = TP_ERR_SUCCESS;
 }

@@ -53,7 +53,7 @@ tp_errno_t tp_buf_add(tp_buffer_t *tgt, void const *src, size_t src_len)
   }
   
   /* sanity - room for operation */
-  if (src_len + tgt->cur_len > tgt->total_len)
+  if (src_len + tgt->cur_len > tgt->max_len)
   {
     return tp_errno = TP_ERR_SPACE;
   }

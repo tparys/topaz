@@ -1,10 +1,77 @@
+#define __STDC_FORMAT_MACROS
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 #include <check.h>
 #include <topaz/topaz.h>
 #include <topaz/buffer.h>
 #include <topaz/syntax.h>
+
+int run_uint(uint64_t value, size_t enc_size)
+{
+  uint8_t raw[64];
+  tp_buffer_t buf;
+  uint64_t dec_val;
+  unsigned int i;
+  
+  /* set up buffer */
+  memset(raw, 0, sizeof(raw));
+  memset(&buf, 0, sizeof(buf));
+  buf.ptr = raw;
+  buf.max_len = sizeof(raw);
+  
+  printf("\nTesting unsigned int: %" PRIu64 " (%zu bytes)\n", value, enc_size);
+  printf("Raw hex: 0x%016" PRIx64 "\n", value);
+  
+  /* encode data */
+  printf("Encoding data .. ");
+  if (tp_syn_enc_uint(&buf, value))
+  {
+    printf("FAIL (%s)\n", tp_errno_lookup_cur());
+    return 1;
+  }
+  printf("OK\n");
+  
+  /* check encoding */
+  printf("Data Bytes:\n");
+  for (i = 0; (i < buf.cur_len) && (i < 16); i++)
+  {
+    printf(" 0x%02x", raw[i]);
+  }
+  if (buf.cur_len > 16)
+  {
+    printf("  ..");
+  }
+  printf("\n");
+  printf("Encoding: %zu bytes .. ", buf.cur_len);
+  if (buf.cur_len != enc_size)
+  {
+    printf("FAIL\n");
+    return 1;
+  }
+  printf("OK\n");
+  
+  /* decode data */
+  printf("Decoding data .. ");
+  if (tp_syn_dec_uint(&dec_val, &buf))
+  {
+    printf("FAIL (%s)\n", tp_errno_lookup_cur());
+    return 1;
+  }
+  printf("OK\n");
+  
+  /* check decoding */
+  printf("Decoded value: %" PRIu64 " .. ", dec_val);
+  if (dec_val != value)
+  {
+    printf("FAIL\n");
+    return 1;
+  }
+  printf("OK\n");
+  
+  return 0;
+}
 
 /* Unit Tests for errno data type */
 
@@ -22,13 +89,14 @@ END_TEST
 
 START_TEST(t_buf_null)
 {
-  /* set up buffer */
   char buf[2];
   tp_buffer_t my_buf;
+
+  /* set up buffer */
+  memset(&buf, 0, sizeof(buf));
+  memset(&my_buf, 0, sizeof(my_buf));
   my_buf.ptr = buf;
-  my_buf.cur_len = 0;
-  my_buf.total_len = 1; /* exclude NULL */
-  memset(buf, 0, sizeof(buf));
+  my_buf.max_len = 1; /* exclude NULL */
   
   /* check null source pointer */
   tp_buf_add(&my_buf, NULL, 0);
@@ -43,7 +111,7 @@ START_TEST(t_buf_null)
   /* check null target */
   tp_buf_add_byte(NULL, 'x');
   ck_assert_int_eq(tp_errno, TP_ERR_NULL);
-  
+
   /* check null target pointer */
   my_buf.ptr = NULL;
   tp_buf_add_byte(&my_buf, 'x');
@@ -54,28 +122,28 @@ END_TEST
 
 START_TEST(t_buf_bounds)
 {
-  /* set up buffer */
   char buf[2];
   tp_buffer_t my_buf;
+
+  /* set up buffer */
+  memset(&buf, 0, sizeof(buf));
+  memset(&my_buf, 0, sizeof(my_buf));
   my_buf.ptr = buf;
-  my_buf.cur_len = 0;
-  my_buf.total_len = 1; /* exclude NULL */
-  memset(buf, 0, sizeof(buf));
-  
+  my_buf.max_len = 1; /* exclude NULL */
+
   /* add one byte */
   tp_buf_add_byte(&my_buf, 'x');
-  
+
   /* checks */
   ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
   ck_assert_str_eq(buf, "x");
-  
+
   /* add one more byte */
   tp_buf_add_byte(&my_buf, 'y');
-  
+
   /* checks */
   ck_assert_int_eq(tp_errno, TP_ERR_SPACE);
   ck_assert_str_eq(buf, "x");
-  
 }
 END_TEST
 
@@ -85,68 +153,34 @@ START_TEST(t_syn_uint)
 {
   int i;
   
-  /* set up buffer */
-  char raw[64];
-  tp_buffer_t buf;
-  buf.ptr = raw;
-  buf.cur_len = 0;
-  buf.total_len = sizeof(raw);
-  
-  /* smallest tiny atom */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_uint(&buf, 0);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 1);
-  ck_assert_int_eq(raw[0], 0);
-
-  /* biggest tiny atom */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_uint(&buf, 0x3f);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 1);
-  ck_assert_str_eq(raw, "\x3f");
-
-  /* smallest small atom */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_uint(&buf, 0x40);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 2);
-  ck_assert_str_eq(raw, "\x81\x40");
+  ck_assert_int_eq(0, run_uint(0x00,1));
+  ck_assert_int_eq(0, run_uint(0x3f,1));
+  ck_assert_int_eq(0, run_uint(0x40,2));
   
   /* small atom boundaries */
   for (i = 1; i < 8; i++)
   {
     uint64_t num = 1UL << (8 * i);
     
-    /* before boundary */   
-    buf.cur_len = 0;
-    memset(raw, 0, sizeof(raw));
-    tp_syn_enc_uint(&buf, num - 1);
-    ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-    ck_assert_int_eq(buf.cur_len, i + 1);
-    
-    /* after boundary */   
-    buf.cur_len = 0;
-    memset(raw, 0, sizeof(raw));
-    tp_syn_enc_uint(&buf, num);
-    ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-    ck_assert_int_eq(buf.cur_len, i + 2);
+    ck_assert_int_eq(0, run_uint(num - 1, i + 1));
+    ck_assert_int_eq(0, run_uint(num, i + 2));
   }
+  
+  ck_assert_int_eq(0, run_uint(0xffffffffffffffff,9));
 }
 END_TEST
 
 START_TEST(t_syn_sint)
 {
-  /* set up buffer */
   char raw[64];
   tp_buffer_t buf;
+
+  /* set up buffer */
+  memset(raw, 0, sizeof(raw));
+  memset(&buf, 0, sizeof(buf));
   buf.ptr = raw;
-  buf.cur_len = 0;
-  buf.total_len = sizeof(raw);
-  
+  buf.max_len = sizeof(raw);
+
   /* smallest tiny atom */
   buf.cur_len = 0;
   memset(raw, 0, sizeof(raw));
@@ -207,13 +241,16 @@ END_TEST
 
 START_TEST(t_syn_bin)
 {
-  /* set up buffer */
   char raw[2052], raw2[2048];
   tp_buffer_t buf;
-  buf.ptr = raw;
-  buf.total_len = sizeof(raw);
-  memset(raw2, 0, sizeof(raw2));
   
+  /* set up buffer */
+  memset(raw, 0, sizeof(raw));
+  memset(raw2, 0, sizeof(raw2));
+  memset(&buf, 0, sizeof(buf));
+  buf.ptr = raw;
+  buf.max_len = sizeof(raw);
+
   /* small - 0 bytes */
   buf.cur_len = 0;
   memset(raw, 0, sizeof(raw));
