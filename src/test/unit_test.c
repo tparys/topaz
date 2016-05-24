@@ -8,70 +8,19 @@
 #include <topaz/buffer.h>
 #include <topaz/syntax.h>
 
-int run_uint(uint64_t value, size_t enc_size)
-{
-  uint8_t raw[64];
-  tp_buffer_t buf;
-  uint64_t dec_val;
-  unsigned int i;
-  
-  /* set up buffer */
-  memset(raw, 0, sizeof(raw));
-  memset(&buf, 0, sizeof(buf));
-  buf.ptr = raw;
-  buf.max_len = sizeof(raw);
-  
-  printf("\nTesting unsigned int: %" PRIu64 " (%zu bytes)\n", value, enc_size);
-  printf("Raw hex: 0x%016" PRIx64 "\n", value);
-  
-  /* encode data */
-  printf("Encoding data .. ");
-  if (tp_syn_enc_uint(&buf, value))
-  {
-    printf("FAIL (%s)\n", tp_errno_lookup_cur());
-    return 1;
-  }
-  printf("OK\n");
-  
-  /* check encoding */
-  printf("Data Bytes:\n");
-  for (i = 0; (i < buf.cur_len) && (i < 16); i++)
-  {
-    printf(" 0x%02x", raw[i]);
-  }
-  if (buf.cur_len > 16)
-  {
-    printf("  ..");
-  }
-  printf("\n");
-  printf("Encoding: %zu bytes .. ", buf.cur_len);
-  if (buf.cur_len != enc_size)
-  {
-    printf("FAIL\n");
-    return 1;
-  }
-  printf("OK\n");
-  
-  /* decode data */
-  printf("Decoding data .. ");
-  if (tp_syn_dec_uint(&dec_val, &buf))
-  {
-    printf("FAIL (%s)\n", tp_errno_lookup_cur());
-    return 1;
-  }
-  printf("OK\n");
-  
-  /* check decoding */
-  printf("Decoded value: %" PRIu64 " .. ", dec_val);
-  if (dec_val != value)
-  {
-    printf("FAIL\n");
-    return 1;
-  }
-  printf("OK\n");
-  
-  return 0;
-}
+/* Helper macro for tests */
+#define CHECKME(x) if (x)                  \
+{                                          \
+  printf("FAIL(%s)\n", tp_errno_lookup_cur());	\
+  return 1;                                \
+} printf("OK\n")
+
+/* Prototypes */
+
+void dump_buf(tp_buffer_t *buf);
+int run_uint(uint64_t value, size_t enc_size);
+int run_sint(int64_t value, size_t enc_size);
+int run_bin(size_t bin_size, size_t enc_size);
 
 /* Unit Tests for errno data type */
 
@@ -153,9 +102,12 @@ START_TEST(t_syn_uint)
 {
   int i;
   
-  ck_assert_int_eq(0, run_uint(0x00,1));
-  ck_assert_int_eq(0, run_uint(0x3f,1));
-  ck_assert_int_eq(0, run_uint(0x40,2));
+  /* Single byte encodings (tiny atom) */
+  ck_assert_int_eq(0, run_uint(0x00, 1));
+  ck_assert_int_eq(0, run_uint(0x3f, 1));
+  
+  /* Smallest two byte encoding (small atom) */
+  ck_assert_int_eq(0, run_uint(0x40, 2));
   
   /* small atom boundaries */
   for (i = 1; i < 8; i++)
@@ -166,12 +118,15 @@ START_TEST(t_syn_uint)
     ck_assert_int_eq(0, run_uint(num, i + 2));
   }
   
-  ck_assert_int_eq(0, run_uint(0xffffffffffffffff,9));
+  /* biggest 8 byte unsigned int (still a small atom) */
+  ck_assert_int_eq(0, run_uint(0xffffffffffffffff, 9));
 }
 END_TEST
 
 START_TEST(t_syn_sint)
 {
+  int i;
+  
   char raw[64];
   tp_buffer_t buf;
 
@@ -180,119 +135,49 @@ START_TEST(t_syn_sint)
   memset(&buf, 0, sizeof(buf));
   buf.ptr = raw;
   buf.max_len = sizeof(raw);
-
-  /* smallest tiny atom */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_sint(&buf, 0);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 1);
-  ck_assert_str_eq(raw, "\x40");
-
-  /* biggest tiny atom (pos) */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_sint(&buf, 0x1f);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 1);
-  ck_assert_str_eq(raw, "\x5f");
-
-  /* biggest tiny atom (pos) */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_sint(&buf, -0x20);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 1);
-  ck_assert_str_eq(raw, "\x60");
-
-  /* smallest small atom (pos) */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_sint(&buf, 0x20);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 2);
-  ck_assert_str_eq(raw, "\x91\x20");
   
-  /* smallest small atom (neg) */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_sint(&buf, -0x21);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 2);
-  ck_assert_str_eq(raw, "\x91\xdf");
-
-  /* small atom (pos) */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_sint(&buf, 0x7fff);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 3);
-  ck_assert_str_eq(raw, "\x92\x7f\xff");
+  /* Single byte encodings (tiny atom) */
+  ck_assert_int_eq(0, run_sint(0x00, 1));
+  ck_assert_int_eq(0, run_sint(0x1f, 1));
+  ck_assert_int_eq(0, run_sint(-0x20, 1));
   
-  /* small atom (pos) */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_sint(&buf, -0x8000);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 3);
-  ck_assert_str_eq(raw, "\x92\x80\x00");
+  /* Smallest two byte encodings (small atom) */
+  ck_assert_int_eq(0, run_sint(0x20, 2));
+  ck_assert_int_eq(0, run_sint(-0x21, 2));
+  
+  /* small atom boundaries */
+  for (i = 1; i < 8; i++)
+  {
+    int64_t num = 1UL << ((8 * i) - 1);
+    
+    ck_assert_int_eq(0, run_sint(num - 1, i + 1));
+    ck_assert_int_eq(0, run_sint(-num, i + 1));
+    ck_assert_int_eq(0, run_sint(num, i + 2));
+    ck_assert_int_eq(0, run_sint(-num - 1, i + 2));
+  }
+
+  /* biggest 8 byte signed ints (still a small atom) */
+  ck_assert_int_eq(0, run_sint(0x7fffffffffffffff, 9));
+  ck_assert_int_eq(0, run_sint(0x8000000000000000, 9));
 }
 END_TEST
 
 START_TEST(t_syn_bin)
 {
-  char raw[2052], raw2[2048];
-  tp_buffer_t buf;
+  /* zero length byte vector */
+  ck_assert_int_eq(0, run_bin(0, 1));
   
-  /* set up buffer */
-  memset(raw, 0, sizeof(raw));
-  memset(raw2, 0, sizeof(raw2));
-  memset(&buf, 0, sizeof(buf));
-  buf.ptr = raw;
-  buf.max_len = sizeof(raw);
-
-  /* small - 0 bytes */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_bin(&buf, raw2, 0);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 1);
-  ck_assert_str_eq(raw, "\xa0");
+  /* small atom (15 bytes) */
+  ck_assert_int_eq(0, run_bin(15, 16));
   
-  /* small - 15 bytes */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_bin(&buf, raw2, 15);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 16);
-  ck_assert_str_eq(raw, "\xaf");
+  /* medium atom (16 bytes) */
+  ck_assert_int_eq(0, run_bin(16, 18));
   
-  /* medium - 16 bytes */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_bin(&buf, raw2, 16);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 18);
-  ck_assert_str_eq(raw, "\xd0\x10");
+  /* medium atom (2047 bytes) */
+  ck_assert_int_eq(0, run_bin(2047, 2049));
   
-  /* medium - 2047 bytes */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_bin(&buf, raw2, 2047);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 2049);
-  ck_assert_str_eq(raw, "\xd7\xff");
-  
-  /* long - 2048 bytes */
-  buf.cur_len = 0;
-  memset(raw, 0, sizeof(raw));
-  tp_syn_enc_bin(&buf, raw2, 2048);
-  ck_assert_int_eq(tp_errno, TP_ERR_SUCCESS);
-  ck_assert_int_eq(buf.cur_len, 2052);
-  ck_assert_int_eq((unsigned char)raw[0], 0xe2);
-  ck_assert_int_eq((unsigned char)raw[1], 0x00);
-  ck_assert_int_eq((unsigned char)raw[2], 0x08);
-  ck_assert_int_eq((unsigned char)raw[3], 0x00);
+  /* long atom (2048 bytes) */
+  ck_assert_int_eq(0, run_bin(2048, 2052));
 }
 END_TEST
 
@@ -332,4 +217,138 @@ int main (void)
   number_failed = srunner_ntests_failed (sr);
   srunner_free (sr);
   return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+/* Utility Functions */
+
+void dump_buf(tp_buffer_t *buf)
+{
+  uint8_t *raw = (uint8_t*)buf->ptr;
+  int i;
+  
+  printf("Data Bytes:\n");
+  for (i = 0; (i < buf->cur_len) && (i < 16); i++)
+  {
+    printf(" %02x", raw[i]);
+  }
+  if (buf->cur_len > 16)
+  {
+    printf("  ..");
+  }
+  printf("\n");
+}
+
+int run_uint(uint64_t value, size_t enc_size)
+{
+  uint8_t raw[64];
+  tp_buffer_t buf;
+  uint64_t dec_val;
+  
+  /* set up buffer */
+  memset(raw, 0, sizeof(raw));
+  memset(&buf, 0, sizeof(buf));
+  buf.ptr = raw;
+  buf.max_len = sizeof(raw);
+  
+  printf("\nTesting unsigned int: %" PRIu64 " (%zu bytes)\n", value, enc_size);
+  printf("Raw hex: 0x%016" PRIx64 "\n", value);
+  
+  /* encode data */
+  printf("Encoding data .. ");
+  CHECKME(tp_syn_enc_uint(&buf, value));
+  
+  /* check encoding */
+  dump_buf(&buf);
+  printf("Encoding: %zu bytes .. ", buf.cur_len);
+  CHECKME(buf.cur_len != enc_size);
+  
+  /* decode data */
+  printf("Decoding data .. ");
+  CHECKME(tp_syn_dec_uint(&dec_val, &buf));
+  
+  /* check decoding */
+  printf("Decoded value: %" PRIu64 " .. ", dec_val);
+  CHECKME(dec_val != value);
+  
+  return 0;
+}
+
+int run_sint(int64_t value, size_t enc_size)
+{
+  uint8_t raw[64];
+  tp_buffer_t buf;
+  int64_t dec_val;
+  
+  /* set up buffer */
+  memset(raw, 0, sizeof(raw));
+  memset(&buf, 0, sizeof(buf));
+  buf.ptr = raw;
+  buf.max_len = sizeof(raw);
+  
+  printf("\nTesting signed int: %" PRId64 " (%zu bytes)\n", value, enc_size);
+  
+  /* encode data */
+  printf("Encoding data .. ");
+  CHECKME(tp_syn_enc_sint(&buf, value));
+  
+  /* check encoding */
+  dump_buf(&buf);
+  printf("Encoding: %zu bytes .. ", buf.cur_len);
+  CHECKME(buf.cur_len != enc_size);
+  
+  /* decode data */
+  printf("Decoding data .. ");
+  CHECKME(tp_syn_dec_sint(&dec_val, &buf));
+  
+  /* check decoding */
+  printf("Decoded value: %" PRId64 " .. ", dec_val);
+  CHECKME(dec_val != value);
+  
+  return 0;
+}
+
+int run_bin(size_t bin_size, size_t enc_size)
+{
+  uint8_t raw[2052], raw2[2048];
+  tp_buffer_t buf, buf2;
+  int64_t dec_val;
+  unsigned int i;
+  
+  /* set up buffer */
+  memset(raw, 0, sizeof(raw));
+  memset(raw2, 0, sizeof(raw2));
+  memset(&buf, 0, sizeof(buf));
+  buf.ptr = raw;
+  buf.max_len = sizeof(raw);
+  
+  /* something to see in the output */
+  for (i = 0; i < 16; i++)
+  {
+    raw2[i] = i + 1;
+  }
+  
+  printf("\nTesting binary blob (%zu bytes)\n", bin_size);
+  
+  /* encode data */
+  printf("Encoding data .. ");
+  CHECKME(tp_syn_enc_bin(&buf, raw2, bin_size));
+  
+  /* check encoding */
+  dump_buf(&buf);
+  printf("Encoding: %zu bytes .. ", buf.cur_len);
+  CHECKME(buf.cur_len != enc_size);
+  
+  /* decode data */
+  printf("Decoding data .. ");
+  CHECKME(tp_syn_dec_bin(&buf2, &buf));
+  
+  /* check decoding */
+  printf("Decoded size: %zu .. ", buf2.cur_len);
+  CHECKME(bin_size != buf2.cur_len);
+  
+  /* verify data */
+  printf("Verifying decoding: .. ");
+  CHECKME(memcmp(raw2, buf2.ptr, bin_size));
+  
+  return 0;
 }

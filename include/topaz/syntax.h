@@ -102,9 +102,9 @@ tp_errno_t tp_syn_enc_uint(tp_buffer_t *tgt, uint64_t value);
 tp_errno_t tp_syn_enc_sint(tp_buffer_t *tgt, int64_t value);
 
 /**
- * \brief Encode Binary Data
+ * \brief Encode Binary Blob
  *
- * Encode binary data SWG binary syntax
+ * Encode binary data segment SWG binary syntax
  *
  * \param[in,out] buf Target data buffer
  * \param[in] ptr Data to encode as atom
@@ -136,5 +136,27 @@ tp_errno_t tp_syn_dec_header(tp_syn_atom_info_t *header, tp_buffer_t const *tgt)
  * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_syn_dec_uint(uint64_t *value, tp_buffer_t *tgt);
+
+/**
+ * \brief Decode Signed Integer
+ *
+ * Decode signed integer from data buffer and advance pointers.
+ *
+ * \param[out] value Parsed value
+ * \param[in,out] buf Input data stream
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_dec_sint(int64_t *value, tp_buffer_t *tgt);
+
+/**
+ * \brief Decode Binary Blob
+ *
+ * Decode binary data segment from data buffer and advance pointers.
+ *
+ * \param[out] value Buffer describing parsed data
+ * \param[in,out] buf Input data stream
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_dec_bin(tp_buffer_t *value, tp_buffer_t *tgt);
 
 #endif

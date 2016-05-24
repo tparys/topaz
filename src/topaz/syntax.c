@@ -230,9 +230,9 @@ tp_errno_t tp_syn_enc_sint(tp_buffer_t *tgt, int64_t value)
 }
 
 /**
- * \brief Encode Binary Data
+ * \brief Encode Binary Blob
  *
- * Encode binary data SWG binary syntax
+ * Encode binary data segment SWG binary syntax
  *
  * \param[in,out] buf Target data buffer
  * \param[in] ptr Data to encode as atom
@@ -408,6 +408,132 @@ tp_errno_t tp_syn_dec_uint(uint64_t *value, tp_buffer_t *tgt)
   
   /* byteflip to native endianess */
   *value = be64toh(*value);
+  
+  /* advance pointers */
+  tgt->parse_idx += header_info.header_bytes;
+  tgt->parse_idx += header_info.data_bytes;
+  
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief Decode Signed Integer
+ *
+ * Decode signed integer from data buffer and advance pointers.
+ *
+ * \param[out] value Parsed value
+ * \param[in,out] buf Input data stream
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_dec_sint(int64_t *value, tp_buffer_t *tgt)
+{
+  tp_syn_atom_info_t header_info;
+  uint8_t *data_ptr, raw[8];
+  
+  /* check for NULL pointers */
+  if ((value == NULL) || (tgt == NULL) || (tgt->ptr == NULL))
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  data_ptr = (uint8_t*)tgt->ptr;
+  
+  /* figure out what's there */
+  if (tp_syn_dec_header(&header_info, tgt))
+  {
+    return tp_errno;
+  }
+  
+  /* ensure it's a valid signed int */
+  if ((header_info.bin_flag == 1) ||
+      (header_info.sign_flag == 0))
+  {
+    return tp_errno = TP_ERR_DATATYPE;
+  }
+  if ((header_info.data_bytes == 0) ||
+      (header_info.data_bytes > 8))
+  {
+    return tp_errno = TP_ERR_REPRESENT;
+  }
+  
+  /* trivial case (tiny atom) */
+  if (header_info.header_bytes == 0)
+  {
+    /* sign extend */
+    *value = *data_ptr & 0x3f;
+    if (*value & 0x20)
+    {
+      *value -= 0x40;
+    }
+    tgt->parse_idx += 1;
+    return TP_ERR_SUCCESS;
+  }
+
+  /* sign extend */
+  if (data_ptr[header_info.header_bytes] & 0x80)
+  {
+    memset(raw, 0xff, 8);
+  }
+  else
+  {
+    memset(raw, 0x00, 8);
+  }
+  
+  /* copy data out */
+  memcpy(raw + 8 - header_info.data_bytes,
+	 data_ptr + header_info.header_bytes,
+	 header_info.data_bytes);
+  memcpy(value, raw, 8);
+  
+  /* byteflip to native endianess */
+  *value = be64toh(*value);
+  
+  /* advance pointers */
+  tgt->parse_idx += header_info.header_bytes;
+  tgt->parse_idx += header_info.data_bytes;
+  
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief Decode Binary Blob
+ *
+ * Decode binary data segment from data buffer and advance pointers.
+ *
+ * \param[out] value Buffer describing parsed data
+ * \param[in,out] buf Input data stream
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_dec_bin(tp_buffer_t *value, tp_buffer_t *tgt)
+{
+  tp_syn_atom_info_t header_info;
+  uint8_t *data_ptr;
+  
+  /* check for NULL pointers */
+  if ((value == NULL) || (tgt == NULL) || (tgt->ptr == NULL))
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  data_ptr = (uint8_t*)tgt->ptr;
+  
+  /* figure out what's there */
+  if (tp_syn_dec_header(&header_info, tgt))
+  {
+    return tp_errno;
+  }
+  
+  /* ensure it's a valid binary segment,
+   * note sign flag must NOT be set! */
+  if ((header_info.bin_flag == 0) ||
+      (header_info.sign_flag == 1))
+  {
+    return tp_errno = TP_ERR_DATATYPE;
+  }
+  
+  /* set up return buffer (zero copy) */
+  memset(value, 0, sizeof(tp_buffer_t));
+  value->ptr = data_ptr + header_info.header_bytes;
+  value->max_len = header_info.data_bytes;
+  value->cur_len = header_info.data_bytes;
   
   /* advance pointers */
   tgt->parse_idx += header_info.header_bytes;
