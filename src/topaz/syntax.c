@@ -245,6 +245,78 @@ tp_errno_t tp_syn_enc_bin(tp_buffer_t *tgt, void const *ptr, size_t len)
 }
 
 /**
+ * \brief Encode Half UID
+ *
+ * Encode Half UID in typical SWG form (4 byte binary blob)
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] value Integer value of Half UID
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_enc_half_uid(tp_buffer_t *tgt, uint32_t value)
+{
+  /* byteflip and encode */
+  value = htobe32(value);
+  return tp_syn_enc_bin(tgt, &value, sizeof(uint32_t));
+}
+
+/**
+ * \brief Encode UID
+ *
+ * Encode UID in typical SWG form (8 byte binary blob)
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] value Integer value of UID
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_enc_uid(tp_buffer_t *tgt, uint64_t value)
+{
+  /* byteflip and encode */
+  value = htobe64(value);
+  return tp_syn_enc_bin(tgt, &value, sizeof(uint32_t));
+}
+
+/**
+ * \brief Encode Method Call
+ *
+ * Encode UID in typical SWG form (8 byte binary blob)
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] obj_uid UID of object for method call
+ * \param[in] method_uid UID of method to call
+ * \param[in] args If non-NULL, encoded arguments to pass to method
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_enc_method(tp_buffer_t *tgt, uint64_t obj_uid,
+			     uint64_t method_uid, tp_buffer_t const *args)
+{
+  /* check for NULL pointers */
+  if ((tgt == NULL) || (tgt->ptr == NULL))
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  
+  /* build the first half of the method call */
+  if ((tp_buf_add_byte(tgt, 0xf8)) || /* tok - method call */
+      (tp_syn_enc_uid(tgt, obj_uid)) ||
+      (tp_syn_enc_uid(tgt, method_uid)) ||
+      (tp_buf_add_byte(tgt, 0xf0)) || /* tok - start list */
+      ((args != NULL) && (tp_buf_add_buf(tgt, args))) || /* optional args */
+      (tp_buf_add_byte(tgt, 0xf1))) /* tok - end list */
+  {
+    return tp_errno;
+  }
+  
+  /*
+   * the end of the method call can be used for terminating long-running
+   * processes (re-encryption of data bands, for example). But outside of
+   * that, these bytes are generally constant, and we're going to ignore
+   * them for now ...
+   */
+  return tp_buf_add(tgt, "\xf9\xf0\x00\x00\x00\xf1", 6);
+}
+
+/**
  * \brief Decode Atom Header
  *
  * Decode header data from datastream, and determine type of next atom,

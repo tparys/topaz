@@ -311,7 +311,6 @@ int run_bin(size_t bin_size, size_t enc_size)
 {
   uint8_t raw[2052], raw2[2048];
   tp_buffer_t buf, buf2;
-  int64_t dec_val;
   unsigned int i;
   
   /* set up buffer */

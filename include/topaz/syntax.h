@@ -53,6 +53,17 @@ typedef struct
 } tp_syn_atom_info_t;
 
 /**
+ * \brief Encode Syntax Token
+ *
+ * Encode 1 byte raw token into target data stream
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] value Value of token
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_enc_token(tp_buffer_t *tgt, uint8_t token);
+
+/**
  * \brief Encode Tiny Atom
  *
  * Encode signed or unsigned 6 bit integer into a 1 byte Atom.
@@ -112,6 +123,42 @@ tp_errno_t tp_syn_enc_sint(tp_buffer_t *tgt, int64_t value);
  * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_syn_enc_bin(tp_buffer_t *tgt, void const *ptr, size_t len);
+
+/**
+ * \brief Encode Half UID
+ *
+ * Encode Half UID in typical SWG form (4 byte binary blob)
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] value Integer value of Half UID
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_enc_half_uid(tp_buffer_t *tgt, uint32_t value);
+
+/**
+ * \brief Encode UID
+ *
+ * Encode UID in typical SWG form (8 byte binary blob)
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] value Integer value of UID
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_enc_uid(tp_buffer_t *tgt, uint64_t value);
+
+/**
+ * \brief Encode Method Call
+ *
+ * Encode UID in typical SWG form (8 byte binary blob)
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] obj_uid UID of object for method call
+ * \param[in] method_uid UID of method to call
+ * \param[in] args If non-NULL, encoded arguments to pass to method
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_enc_method(tp_buffer_t *tgt, uint64_t obj_uid,
+			     uint64_t method_uid, tp_buffer_t const *args);
 
 /**
  * \brief Decode Atom Header
