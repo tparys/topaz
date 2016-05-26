@@ -273,7 +273,7 @@ tp_errno_t tp_syn_enc_uid(tp_buffer_t *tgt, uint64_t value)
 {
   /* byteflip and encode */
   value = htobe64(value);
-  return tp_syn_enc_bin(tgt, &value, sizeof(uint32_t));
+  return tp_syn_enc_bin(tgt, &value, sizeof(uint64_t));
 }
 
 /**

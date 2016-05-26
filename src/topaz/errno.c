@@ -62,13 +62,16 @@ struct
   { TP_ERR_NO_TPM         , "Target drive does not contain a TPM" },
   { TP_ERR_TPM_PROTO      , "TPM does not support a known protocol" },
   { TP_ERR_TPM_VERSION    , "TPM using an unknown protocol version" },
-  { TP_ERR_TPM_SSC        , "Unrecognized SSC messaging type" },
-  { TP_ERR_TPM_COMID_RESET, "Cannot reset specified ComID" },
+  { TP_ERR_NO_SSC         , "Unrecognized SSC messaging type" },
+  { TP_ERR_COMID_RESET    , "Cannot reset specified ComID" },
+  { TP_ERR_BAD_COMID      , "Unexpected ComID in TPM response" },
+  { TP_ERR_TIMEOUT        , "Timeout waiting for TPM response" },
 
   /* Tranport Errors */
 
   { TP_ERR_IOCTL          , "Failed to call ioctl" },
   { TP_ERR_SENSE          , "Bad sense data" },
+  { TP_ERR_PACKET_SIZE    , "Packet too large for drive" },
 
   /* Linux Specific Errors */
 

@@ -67,7 +67,7 @@ enum
   TP_SWG_START_SESSION = TP_UID(0, 0xff02),
   
   /** SMUID -  ACK / Response to Session Startup */
-  TP_SWG_SYNC_SESSION  = _UID_MAKE(0, 0xff03),
+  TP_SWG_SYNC_SESSION  = TP_UID(0, 0xff03),
   
   /** Next */
   TP_SWG_NEXT = TP_UID(0x6, 0x8),

@@ -8,4 +8,5 @@ add_library(topaz
   topaz.c
   security.c
   discovery.c
+  swg_core.c
 )

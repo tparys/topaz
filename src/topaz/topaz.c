@@ -57,13 +57,18 @@ tp_handle_t *tp_open(char const *path)
   tp_errno_t rc = 0;
   
   /* alloc some memory for new handle */
-  if ((handle = calloc(1, sizeof(handle))) == NULL)
+  if ((handle = calloc(1, sizeof(tp_handle_t))) == NULL)
   {
-    rc = TP_ERR_ALLOC;
+    tp_errno = TP_ERR_ALLOC;
+    return NULL;
   }
   
+  /* initial assumptions until we know better */
+  handle->lba_align = 1;
+  handle->max_com_packet_size = 1024;
+  
   /* open ATA device */
-  else if ((handle->ata = tp_ata_open(path)) == NULL)
+  if ((handle->ata = tp_ata_open(path)) == NULL)
   {
     rc = tp_errno;
   }

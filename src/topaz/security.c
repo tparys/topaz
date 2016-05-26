@@ -167,7 +167,7 @@ tp_errno_t tp_security_comid_reset(tp_handle_t *handle, uint32_t com_id)
   /* Check result */
   if ((htobe32(resp->avail_data) != 4) || (htobe32(resp->failed) != 0))
   {
-    return tp_errno = TP_ERR_TPM_COMID_RESET;
+    return tp_errno = TP_ERR_COMID_RESET;
   }
   
   TP_DEBUG(2) printf("  Completed\n");

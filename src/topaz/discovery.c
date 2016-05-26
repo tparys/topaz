@@ -218,7 +218,7 @@ tp_errno_t tp_probe_discovery(tp_handle_t *handle)
   /* make sure it supports a recognized messaging type (SSC) */
   if (handle->ssc_type == TP_SSC_UNKNOWN)
   {
-    return tp_errno = TP_ERR_TPM_SSC;
+    return tp_errno = TP_ERR_NO_SSC;
   }
   
   return tp_errno = TP_ERR_SUCCESS;

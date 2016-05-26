@@ -20,13 +20,16 @@ BUFFER_END : Unexpected end of data buffer while parsing
 NO_TPM : Target drive does not contain a TPM
 TPM_PROTO : TPM does not support a known protocol
 TPM_VERSION : TPM using an unknown protocol version
-TPM_SSC : Unrecognized SSC messaging type
-TPM_COMID_RESET : Cannot reset specified ComID
+NO_SSC : Unrecognized SSC messaging type
+COMID_RESET : Cannot reset specified ComID
+BAD_COMID : Unexpected ComID in TPM response
+TIMEOUT : Timeout waiting for TPM response
 
 @Tranport Errors
 
 IOCTL : Failed to call ioctl
 SENSE : Bad sense data
+PACKET_SIZE : Packet too large for drive
 
 @Linux Specific Errors
 

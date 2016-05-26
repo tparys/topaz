@@ -85,10 +85,16 @@ typedef enum
   TP_ERR_TPM_VERSION     = 0x00020002,
 
   /** Unrecognized SSC messaging type */
-  TP_ERR_TPM_SSC         = 0x00020003,
+  TP_ERR_NO_SSC          = 0x00020003,
 
   /** Cannot reset specified ComID */
-  TP_ERR_TPM_COMID_RESET = 0x00020004,
+  TP_ERR_COMID_RESET     = 0x00020004,
+
+  /** Unexpected ComID in TPM response */
+  TP_ERR_BAD_COMID       = 0x00020005,
+
+  /** Timeout waiting for TPM response */
+  TP_ERR_TIMEOUT         = 0x00020006,
 
 /* Tranport Errors */
 
@@ -97,6 +103,9 @@ typedef enum
 
   /** Bad sense data */
   TP_ERR_SENSE           = 0x00030001,
+
+  /** Packet too large for drive */
+  TP_ERR_PACKET_SIZE     = 0x00030002,
 
 /* Linux Specific Errors */
 

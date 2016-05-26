@@ -69,6 +69,12 @@ typedef struct
   /** LBA alignment granularity */
   uint64_t lba_align;
   
+  /** Largest valid ComPacketSize for session */
+  size_t max_com_packet_size;
+  
+  /** Space for doing I/O (non-reentrant) */
+  char io_block[64 * 1024];
+  
 } tp_handle_t;
 
 #endif
