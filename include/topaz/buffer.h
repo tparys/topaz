@@ -40,7 +40,11 @@
 typedef struct
 {
   /** Pointer to start of data buffer */
-  void *ptr;
+  union
+  {
+    void *ptr;
+    uint8_t *byte_ptr;
+  };
   
   /** Maximum length of data segment */
   size_t max_len;
@@ -97,5 +101,27 @@ tp_errno_t tp_buf_add_str(tp_buffer_t *tgt, char *src);
  * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_buf_add_buf(tp_buffer_t *tgt, tp_buffer_t const *src);
+
+/**
+ * \brief Trim leading bytes from buffer
+ *
+ * Advance pointers to remove reference to early bytes in static buffer.
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] count Number of bytes to removeSource data buffer
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_buf_trim_left(tp_buffer_t *tgt, size_t count);
+
+/**
+ * \brief Trim trailing bytes from buffer
+ *
+ * Change counters to reduce effective size of buffer.
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] count Number of bytes to remove
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_buf_trim_right(tp_buffer_t *tgt, size_t count);
 
 #endif

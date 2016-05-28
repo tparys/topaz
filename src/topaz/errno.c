@@ -55,7 +55,7 @@ struct
   { TP_ERR_SYNTAX         , "Unexpected token in binary syntax" },
   { TP_ERR_DATATYPE       , "Wrong datatype in parsing stream" },
   { TP_ERR_REPRESENT      , "No valid representation for data" },
-  { TP_ERR_BUFFER_END     , "Unexpected end of data buffer while parsing" },
+  { TP_ERR_BUFFER_END     , "Unexpected end of data buffer" },
 
   /* TPM Errors */
 
@@ -66,6 +66,27 @@ struct
   { TP_ERR_COMID_RESET    , "Cannot reset specified ComID" },
   { TP_ERR_BAD_COMID      , "Unexpected ComID in TPM response" },
   { TP_ERR_TIMEOUT        , "Timeout waiting for TPM response" },
+
+  /* SWG Method Call Statuses */
+
+  { TP_ERR_CALL_SUCCESS   , "Call Failure - Success" },
+  { TP_ERR_CALL_NOT_AUTHORIZED, "Call Failure - Not Authorized" },
+  { TP_ERR_CALL_READ_ONLY , "Call Failure - Read Only" },
+  { TP_ERR_CALL_SP_BUSY   , "Call Failure - SP Busy" },
+  { TP_ERR_CALL_SP_FAILED , "Call Failure - SP Failed" },
+  { TP_ERR_CALL_SP_DISABLED, "Call Failure - SP Disabled" },
+  { TP_ERR_CALL_SP_FROZEN , "Call Failure - SP Frozen" },
+  { TP_ERR_CALL_NO_SESSIONS_AVAILABLE, "Call Failure - No Sessions Available" },
+  { TP_ERR_CALL_INDEX_CONFLICT, "Call Failure - Index Conflict" },
+  { TP_ERR_CALL_INSUFFICIENT_SPACE, "Call Failure - Insufficient Space" },
+  { TP_ERR_CALL_INSUFFICIENT_ROWS, "Call Failure - Insufficient Rows" },
+  { TP_ERR_CALL_INVALID_COMMAND, "Call Failure - Invalid Command" },
+  { TP_ERR_CALL_INVALID_PARAMETER, "Call Failure - Invalid Parameter" },
+  { TP_ERR_CALL_INVALID_SECMSG_PROPERTIES, "Call Failure - Invalid SECMSG Properties" },
+  { TP_ERR_CALL_TPER_MALFUNCTION, "Call Failure - TPer Malfunction" },
+  { TP_ERR_CALL_TRANSATION_FAILURE, "Call Failure - Transaction Failure" },
+  { TP_ERR_CALL_RESPONSE_OVERFLOW, "Call Failure - Response Overflow" },
+  { TP_ERR_CALL_AUTHORITY_LOCKED_OUT, "Call Failure - Authority Locked Out" },
 
   /* Tranport Errors */
 

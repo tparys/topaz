@@ -13,7 +13,7 @@ SPACE : Insufficient space for requested operation
 SYNTAX : Unexpected token in binary syntax
 DATATYPE : Wrong datatype in parsing stream
 REPRESENT : No valid representation for data
-BUFFER_END : Unexpected end of data buffer while parsing
+BUFFER_END : Unexpected end of data buffer
 
 @TPM Errors
 
@@ -24,6 +24,27 @@ NO_SSC : Unrecognized SSC messaging type
 COMID_RESET : Cannot reset specified ComID
 BAD_COMID : Unexpected ComID in TPM response
 TIMEOUT : Timeout waiting for TPM response
+
+@SWG Method Call Statuses
+
+CALL_SUCCESS : Call Failure - Success
+CALL_NOT_AUTHORIZED : Call Failure - Not Authorized
+CALL_READ_ONLY : Call Failure - Read Only
+CALL_SP_BUSY : Call Failure - SP Busy
+CALL_SP_FAILED : Call Failure - SP Failed
+CALL_SP_DISABLED : Call Failure - SP Disabled
+CALL_SP_FROZEN : Call Failure - SP Frozen
+CALL_NO_SESSIONS_AVAILABLE : Call Failure - No Sessions Available
+CALL_INDEX_CONFLICT : Call Failure - Index Conflict
+CALL_INSUFFICIENT_SPACE : Call Failure - Insufficient Space
+CALL_INSUFFICIENT_ROWS : Call Failure - Insufficient Rows
+CALL_INVALID_COMMAND : Call Failure - Invalid Command
+CALL_INVALID_PARAMETER : Call Failure - Invalid Parameter
+CALL_INVALID_SECMSG_PROPERTIES : Call Failure - Invalid SECMSG Properties
+CALL_TPER_MALFUNCTION : Call Failure - TPer Malfunction
+CALL_TRANSATION_FAILURE : Call Failure - Transaction Failure
+CALL_RESPONSE_OVERFLOW : Call Failure - Response Overflow
+CALL_AUTHORITY_LOCKED_OUT : Call Failure - Authority Locked Out
 
 @Tranport Errors
 

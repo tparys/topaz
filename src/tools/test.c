@@ -25,24 +25,14 @@ int main()
     return 1;
   }
   
-  if (tp_syn_enc_method(&buf, TP_SWG_SMUID, TP_SWG_PROPERTIES, NULL))
-  {
-    printf("ENC FAIL!\n");
-  }
-  
-  tp_debug_dump(buf.ptr, buf.cur_len);
-  
-  if ((tp_swg_send(handle, &buf, 0)) ||
-      (tp_swg_recv(&buf, handle)))
+  if (tp_swg_invoke(handle, &buf, TP_SWG_SMUID, TP_SWG_PROPERTIES, NULL))
   {
     printf("I/O fail : %s\n", tp_errno_lookup_cur());
   }
   
-  tp_debug_dump(buf.ptr, buf.cur_len);
-  
   tp_close(handle);
   handle = NULL;
-
+  
   return 0;
   
 }

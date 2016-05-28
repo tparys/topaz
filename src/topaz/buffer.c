@@ -118,3 +118,61 @@ tp_errno_t tp_buf_add_buf(tp_buffer_t *tgt, tp_buffer_t const *src)
   
   return tp_buf_add(tgt, src->ptr, src->cur_len);
 }
+
+/**
+ * \brief Trim leading bytes from buffer
+ *
+ * Advance pointers to remove reference to early bytes in static buffer.
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] count Number of bytes to removeSource data buffer
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_buf_trim_left(tp_buffer_t *tgt, size_t count)
+{
+  /* sanity checks */
+  if (tgt == NULL)
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  if (tgt->max_len < count)
+  {
+    return tp_errno = TP_ERR_BUFFER_END;
+  }
+  
+  /* advance pointers & counters */
+  tgt->byte_ptr += count;
+  tgt->max_len -= count;
+  tgt->cur_len = (tgt->cur_len < count ? 0 : tgt->cur_len - count);
+  tgt->parse_idx = (tgt->parse_idx < count ? 0 : tgt->parse_idx - count);
+  
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief Trim trailing bytes from buffer
+ *
+ * Change counters to reduce effective size of buffer.
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] count Number of bytes to remove
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_buf_trim_right(tp_buffer_t *tgt, size_t count)
+{
+  /* sanity checks */
+  if (tgt == NULL)
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  if (tgt->max_len < count)
+  {
+    return tp_errno = TP_ERR_BUFFER_END;
+  }
+  
+  /* advance pointers & counters */
+  tgt->max_len -= count;
+  tgt->cur_len = (tgt->cur_len < count ? 0 : tgt->cur_len - count);
+  
+  return tp_errno = TP_ERR_SUCCESS;
+}

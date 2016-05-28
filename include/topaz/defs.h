@@ -37,6 +37,9 @@
 #include <stdint.h>
 #include <topaz/errno.h>
 
+/* Maximum number of bytes for an I/O operation */
+#define MAX_IO_BLOCK (64 * 1024)
+
 /** SSCs (Messaging sets) supported by drive */
 typedef enum
 {
@@ -73,7 +76,7 @@ typedef struct
   size_t max_com_packet_size;
   
   /** Space for doing I/O (non-reentrant) */
-  char io_block[64 * 1024];
+  char io_block[MAX_IO_BLOCK];
   
 } tp_handle_t;
 

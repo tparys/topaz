@@ -29,12 +29,18 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
+
 #include <unistd.h>
 #include <string.h>
 #include <endian.h>
 #include <topaz/debug.h>
+#include <topaz/uid_swg.h>
 #include <topaz/swg_core.h>
 #include <topaz/transport_ata.h>
+#include <topaz/syntax.h>
+
+#include <topaz/debug.h>
 
 /* Pad to value to mutiple of another */
 #define TP_PAD_MULTIPLE(val, mult) (((val + (mult - 1)) / mult) * mult)
@@ -178,4 +184,102 @@ tp_errno_t tp_swg_recv(tp_buffer_t *payload, tp_handle_t *dev)
   payload->max_len = be32toh(header->sub.length);
   
   return tp_errno = TP_ERR_SUCCESS;
+}
+
+
+/**
+ * \brief Invoke Method
+ *
+ * Invoke method in SWG communication stream upon object.
+ *
+ * \param[in,out] dev Target drive
+ * \param[out] response Buffer to catch encoded return (or NULL to ignore)
+ * \param[in] obj_uid UID of object for method call
+ * \param[in] method_uid UID of method to call
+ * \param[in] args Encoded arguments to pass to method (or NULL for none)
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_invoke(tp_handle_t *dev, tp_buffer_t *response,
+			 uint64_t obj_uid, uint64_t method_uid,
+			 tp_buffer_t const *args)
+{
+  int use_session_ids;
+  uint8_t call_status;
+  tp_buffer_t work;
+  char work_raw[MAX_IO_BLOCK];
+  
+  /* check for NULL pointers */
+  if (dev == NULL)
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  
+  /* set up static buffer */
+  memset(work_raw, 0, sizeof(work_raw));
+  memset(&work, 0, sizeof(work));
+  work.ptr = work_raw;
+  work.max_len = sizeof(work_raw);
+  
+  /* session ID's with everything but session manager */
+  use_session_ids = (obj_uid == TP_SWG_SMUID ? 0 : 1);
+  
+  /* encode method, and perform I/O */
+  if ((tp_syn_enc_method(&work, TP_SWG_SMUID, TP_SWG_PROPERTIES, args)) ||
+      (tp_swg_send(dev, &work, use_session_ids)) ||
+      (tp_swg_recv(&work, dev)))
+  {
+    return tp_errno;
+  }
+  
+  /* NOTE - work.ptr now points within dev->io_block via tp_swg_recv() */
+  
+  /* skip method signature, if present (session manager stuff) */
+  if (work.byte_ptr[0] == 0xf8)
+  {
+    /* remove leading 19 bytes from buffer */
+    if (tp_buf_trim_left(&work, 19))
+    {
+      return tp_errno;
+    }
+  }
+  
+  /* last 5 bytes contain method status code */
+  call_status = work.byte_ptr[work.cur_len - 4];
+  if (call_status)
+  {
+    /* convert to appropriate error code */
+    return tp_errno = (TP_ERR_CALL_SUCCESS + call_status);
+  }
+  
+  /* if response is wanted, extract from remaining bytes */
+  if (response)
+  {
+    if ((tp_buf_trim_left(&work, 1)) ||
+	(tp_buf_trim_right(&work, 7)))
+    {
+      return tp_errno;
+    }
+    
+    tp_debug_dump(work.ptr, work.cur_len);
+  }
+  
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief Host Properties
+ *
+ * Establish level 1 communications by exchanging communication properties
+ * with TPM on drive.
+ *
+ * \param[in,out] dev Target drive
+ * \param[out] response Buffer to catch encoded return (or NULL to ignore)
+ * \param[in] obj_uid UID of object for method call
+ * \param[in] method_uid UID of method to call
+ * \param[in] args Encoded arguments to pass to method (or NULL for none)
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_do_properties(tp_handle_t *dev)
+{
+  return tp_errno = TP_ERR_UNSPECIFIED;
 }

@@ -103,4 +103,35 @@ tp_errno_t tp_swg_send(tp_handle_t *dev, tp_buffer_t const *payload,
  */
 tp_errno_t tp_swg_recv(tp_buffer_t *payload, tp_handle_t *dev);
 
+/**
+ * \brief Invoke Method
+ *
+ * Invoke method in SWG communication stream upon object.
+ *
+ * \param[in,out] dev Target drive
+ * \param[out] response Buffer to catch encoded return (or NULL to ignore)
+ * \param[in] obj_uid UID of object for method call
+ * \param[in] method_uid UID of method to call
+ * \param[in] args Encoded arguments to pass to method (or NULL for none)
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_invoke(tp_handle_t *dev, tp_buffer_t *response,
+			 uint64_t obj_uid, uint64_t method_uid,
+			 tp_buffer_t const *args);
+
+/**
+ * \brief Host Properties
+ *
+ * Establish level 1 communications by exchanging communication properties
+ * with TPM on drive.
+ *
+ * \param[in,out] dev Target drive
+ * \param[out] response Buffer to catch encoded return (or NULL to ignore)
+ * \param[in] obj_uid UID of object for method call
+ * \param[in] method_uid UID of method to call
+ * \param[in] args Encoded arguments to pass to method (or NULL for none)
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_do_properties(tp_handle_t *dev);
+
 #endif
