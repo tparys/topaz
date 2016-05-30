@@ -35,6 +35,41 @@
 #include <stdint.h>
 #include <topaz/buffer.h>
 
+/** Syntax Tokens */
+enum
+{
+  /* Sequence Tokens */
+  
+  /** Beginning of a list */
+  TP_SWG_START_LIST  = 0xf0,
+  
+  /** End of a list */
+  TP_SWG_END_LIST    = 0xf1,
+  
+  /** Start of a named (key-value) data type */
+  TP_SWG_START_NAME  = 0xf2,
+  
+  /** End of a named (key-value) data type */
+  TP_SWG_END_NAME    = 0xf3,
+  
+  /* Control Tokens */
+  
+  /** Beginning of a method (function) call */
+  TP_SWG_CALL        = 0xf8,
+
+  /** Separator between method call and method status */
+  TP_SWG_END_OF_DATA = 0xf9,
+  
+  /** End current session */
+  TP_SWG_END_SESSION = 0xfa,
+  
+  /** Start of transaction */
+  TP_SWG_START_TRANS = 0xfb,
+  
+  /** End of transaction */
+  TP_SWG_END_TRANS   = 0xfc
+};
+
 /** SWG Atom decoding information */
 typedef struct
 {
@@ -171,7 +206,7 @@ tp_errno_t tp_syn_enc_method(tp_buffer_t *tgt, uint64_t obj_uid,
  * \param[in] buf Input data stream
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_syn_dec_header(tp_syn_atom_info_t *header, tp_buffer_t const *tgt);
+tp_errno_t tp_syn_dec_atom_header(tp_syn_atom_info_t *header, tp_buffer_t const *tgt);
 
 /**
  * \brief Decode Unsigned Integer
@@ -205,5 +240,35 @@ tp_errno_t tp_syn_dec_sint(int64_t *value, tp_buffer_t *tgt);
  * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_syn_dec_bin(tp_buffer_t *value, tp_buffer_t *tgt);
+
+/**
+ * \brief Display encoded data item
+ *
+ * Print human readable version of encoded SWG data item.
+ *
+ * \param[in,out] data SWG data to show
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_print_item(tp_buffer_t *data);
+
+/**
+ * \brief Display encoded data atom
+ *
+ * Print human readable version of encoded SWG data atom.
+ *
+ * \param[in,out] data SWG data to show
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_print_atom(tp_buffer_t *data);
+
+/**
+ * \brief Display encoded data stream
+ *
+ * Print human readable version of encoded SWG data.
+ *
+ * \param[in,out] data SWG data to show
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_print(tp_buffer_t *data);
 
 #endif

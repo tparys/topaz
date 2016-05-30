@@ -12,7 +12,7 @@ int main()
 {
   tp_handle_t *handle = NULL;
   char raw[512] = {0};
-  tp_buffer_t buf;
+  tp_buffer_t buf, ret;
   memset(&buf, 0, sizeof(buf));
   buf.ptr = raw;
   buf.max_len = sizeof(raw);

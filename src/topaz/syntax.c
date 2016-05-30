@@ -30,8 +30,12 @@
  */
 
 #define _BSD_SOURCE
+#define __STDC_FORMAT_MACROS
+#include <stdio.h>
 #include <string.h>
 #include <endian.h>
+#include <ctype.h>
+#include <inttypes.h>
 #include <topaz/syntax.h>
 
 /**
@@ -296,24 +300,36 @@ tp_errno_t tp_syn_enc_method(tp_buffer_t *tgt, uint64_t obj_uid,
     return tp_errno = TP_ERR_NULL;
   }
   
-  /* build the first half of the method call */
-  if ((tp_buf_add_byte(tgt, 0xf8)) || /* tok - method call */
-      (tp_syn_enc_uid(tgt, obj_uid)) ||
-      (tp_syn_enc_uid(tgt, method_uid)) ||
-      (tp_buf_add_byte(tgt, 0xf0)) || /* tok - start list */
-      ((args != NULL) && (tp_buf_add_buf(tgt, args))) || /* optional args */
-      (tp_buf_add_byte(tgt, 0xf1))) /* tok - end list */
-  {
-    return tp_errno;
-  }
-  
-  /*
-   * the end of the method call can be used for terminating long-running
-   * processes (re-encryption of data bands, for example). But outside of
-   * that, these bytes are generally constant, and we're going to ignore
-   * them for now ...
-   */
-  return tp_buf_add(tgt, "\xf9\xf0\x00\x00\x00\xf1", 6);
+  /* build the method call */
+  return tp_buf_add_byte(tgt, TP_SWG_CALL) ||
+
+    /* followed by object / method UIDs */
+    tp_syn_enc_uid(tgt, obj_uid) ||
+    tp_syn_enc_uid(tgt, method_uid) ||
+    
+    /* start of argument list */
+    tp_buf_add_byte(tgt, TP_SWG_START_LIST) ||
+    
+    /* arguments themselves are optional */
+    ((args != NULL) && (tp_buf_add_buf(tgt, args))) ||
+    
+    /* end of argument list */
+    tp_buf_add_byte(tgt, TP_SWG_END_LIST) ||
+    
+    /*
+     * the end of the method call can be used for terminating long-running
+     * processes (re-encryption of data bands, for example). But outside of
+     * that, these bytes are generally constant, and we're going to ignore
+     * them for now ...
+     */
+    tp_buf_add_byte(tgt, TP_SWG_END_OF_DATA) ||
+    
+    /* nominally, method status is basically a list of three zeros ... */
+    tp_buf_add_byte(tgt, TP_SWG_START_LIST) ||
+    tp_syn_enc_uint(tgt, 0) ||
+    tp_syn_enc_uint(tgt, 0) ||
+    tp_syn_enc_uint(tgt, 0) ||
+    tp_buf_add_byte(tgt, TP_SWG_END_LIST);
 }
 
 /**
@@ -327,7 +343,7 @@ tp_errno_t tp_syn_enc_method(tp_buffer_t *tgt, uint64_t obj_uid,
  * \param[in] buf Input data stream
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_syn_dec_header(tp_syn_atom_info_t *header, tp_buffer_t const *tgt)
+tp_errno_t tp_syn_dec_atom_header(tp_syn_atom_info_t *header, tp_buffer_t const *tgt)
 {
   uint8_t *atom;
   size_t bytes_left;
@@ -339,7 +355,7 @@ tp_errno_t tp_syn_dec_header(tp_syn_atom_info_t *header, tp_buffer_t const *tgt)
   }
   
   /* otherwise safe to use this pointer */
-  atom = (uint8_t*)tgt->ptr;
+  atom = (uint8_t*)tgt->ptr + tgt->parse_idx;
   bytes_left = tgt->cur_len - tgt->parse_idx;
   
   /* check that there's something to parse */
@@ -415,6 +431,12 @@ tp_errno_t tp_syn_dec_header(tp_syn_atom_info_t *header, tp_buffer_t const *tgt)
     header->data_bytes += atom[3];
   }
   
+  /* probably some other type of token */
+  else
+  {
+    return tp_errno = TP_ERR_DATATYPE;
+  }
+  
   /* ensure data bytes exist */
   if (bytes_left < (header->header_bytes + header->data_bytes))
   {
@@ -446,7 +468,7 @@ tp_errno_t tp_syn_dec_uint(uint64_t *value, tp_buffer_t *tgt)
   data_ptr = (uint8_t*)tgt->ptr;
   
   /* figure out what's there */
-  if (tp_syn_dec_header(&header_info, tgt))
+  if (tp_syn_dec_atom_header(&header_info, tgt))
   {
     return tp_errno;
   }
@@ -510,7 +532,7 @@ tp_errno_t tp_syn_dec_sint(int64_t *value, tp_buffer_t *tgt)
   data_ptr = (uint8_t*)tgt->ptr;
   
   /* figure out what's there */
-  if (tp_syn_dec_header(&header_info, tgt))
+  if (tp_syn_dec_atom_header(&header_info, tgt))
   {
     return tp_errno;
   }
@@ -585,10 +607,10 @@ tp_errno_t tp_syn_dec_bin(tp_buffer_t *value, tp_buffer_t *tgt)
   {
     return tp_errno = TP_ERR_NULL;
   }
-  data_ptr = (uint8_t*)tgt->ptr;
+  data_ptr = (uint8_t*)tgt->ptr + tgt->parse_idx;
   
   /* figure out what's there */
-  if (tp_syn_dec_header(&header_info, tgt))
+  if (tp_syn_dec_atom_header(&header_info, tgt))
   {
     return tp_errno;
   }
@@ -610,6 +632,225 @@ tp_errno_t tp_syn_dec_bin(tp_buffer_t *value, tp_buffer_t *tgt)
   /* advance pointers */
   tgt->parse_idx += header_info.header_bytes;
   tgt->parse_idx += header_info.data_bytes;
+  
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief Display encoded data atom
+ *
+ * Print human readable version of encoded SWG data atom.
+ *
+ * \param[in,out] data SWG data to show
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_print_atom(tp_buffer_t *data)
+{
+  tp_syn_atom_info_t info;
+  
+  /* check for NULL pointers */
+  if ((data == NULL) || (data->ptr == NULL))
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  
+  /* What's the next item? */
+  if (tp_syn_dec_atom_header(&info, data) == 0)
+  {
+    /* atom */
+    if (info.bin_flag)
+    {
+      tp_buffer_t bin_data;
+      unsigned i, is_print;
+
+      /* binary data - UIDs, strings, and binary blobs */
+      if (tp_syn_dec_bin(&bin_data, data))
+      {
+	return tp_errno;
+      }
+      
+      /* scan if the whole buffer is printable */
+      is_print = 1;
+      for (i = 0; i < bin_data.cur_len; i++)
+      {
+	if (!(isprint(bin_data.byte_ptr[i])))
+	{
+	  is_print = 0;
+	}
+      }
+      
+      /* if non-zero and printable, it's probably a string */
+      if ((bin_data.cur_len > 0) &&
+	  (is_print == 1))
+      {
+	/* Careful, not NULL terminated! */
+	printf(" \'");
+	fwrite(bin_data.ptr, bin_data.cur_len, 1, stdout);
+	printf("\'");
+      }
+      
+      /*
+       * If it's 8 bytes, and looks like 32 bit int's crammed
+       * together, it's probably a UID
+       */
+      else if ((bin_data.cur_len == 8) &&
+	       (bin_data.byte_ptr[0] == 0) &&
+	       (bin_data.byte_ptr[4] == 0))
+      {
+	/* Looks like a UID, try to print it as it's original 32 bit ints */
+	uint32_t upper, lower;
+	memcpy(&upper, bin_data.byte_ptr + 0, 4);
+	lower = be32toh(lower);
+	memcpy(&lower, bin_data.byte_ptr + 4, 4);
+	lower = be32toh(lower);
+	printf(" %u:%u", upper, lower);
+      }
+      
+      /* otherwise, dump the first few bytes of the binary data */
+      else
+      {
+	printf(" {");
+	for (i = 0; (i < 16) && (i < bin_data.cur_len); i++)
+	{
+	  printf("%02x", bin_data.byte_ptr[i]);
+	}
+	if (bin_data.cur_len > 16)
+	{
+	  printf("..");
+	}
+	printf("}");
+      }
+    }
+    else if (info.sign_flag)
+    {
+      /* signed integer */
+      int64_t value = 5;
+      if (tp_syn_dec_sint(&value, data))
+      {
+	return tp_errno;
+      }
+      printf(" %" PRId64, value);
+    }
+    else
+    {
+      /* unsigned integer */
+      uint64_t value = 5;
+      if (tp_syn_dec_uint(&value, data))
+      {
+	return tp_errno;
+      }
+      printf(" %" PRIu64, value);
+    }
+  }
+  
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief Display encoded data stream
+ *
+ * Print human readable version of encoded SWG data.
+ *
+ * \param[in,out] data SWG data to show
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_print(tp_buffer_t *data)
+{
+  tp_syn_atom_info_t info;
+  uint8_t next;
+  
+  /* check for NULL pointers */
+  if ((data == NULL) || (data->ptr == NULL))
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  
+  /* and that there's some room to work with */
+  if (data->cur_len <= data->parse_idx)
+  {
+    return tp_errno = TP_ERR_BUFFER_END;
+  }
+  
+  /* basic data atom? */
+  if (tp_syn_dec_atom_header(&info, data) == 0)
+  {
+    return tp_syn_print_atom(data);
+  }
+
+  switch (data->byte_ptr[data->parse_idx])
+  {
+    case TP_SWG_START_LIST: /* a list of items */
+      
+      /* start of list */
+      printf(" [");
+      data->parse_idx++;
+      
+      /* items within */
+      while (1)
+      {
+	/* check next byte */
+	if (tp_buf_peek(&next, data))
+	{
+	  return tp_errno;
+	}
+	
+	/* kick out of loop */
+	if (next == TP_SWG_END_LIST)
+	{
+	  break;
+	}
+	
+	/* otherwise recurse */
+	if (tp_syn_print(data))
+	{
+	  return tp_errno;
+	}
+	printf(",");
+      }
+      
+      /* end of list */
+      printf(" ]");
+      data->parse_idx++;
+      
+      break;
+      
+    case TP_SWG_START_NAME: /* named data (key/value data) */
+      
+      /* start of name */
+      data->parse_idx++;
+      
+      /* first data item (name) */
+      if (tp_syn_print(data))
+      {
+	return tp_errno;
+      }
+      
+      printf(" =");
+      
+      /* second data item (value) */
+      if (tp_syn_print(data))
+      {
+	return tp_errno;
+      }
+      
+      /* ensure next byte is end name */
+      if (tp_buf_peek(&next, data))
+      {
+	return tp_errno;
+      }
+      if (next != TP_SWG_END_NAME)
+      {
+	return tp_errno = TP_ERR_DATATYPE;
+      }
+      data->parse_idx++;
+      break;
+      
+    default:
+      printf("\n\nUnpexted token %u / 0x%02x\n", next, next);
+      
+      return tp_errno = TP_ERR_DATATYPE;
+      break;
+  }
   
   return tp_errno = TP_ERR_SUCCESS;
 }

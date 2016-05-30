@@ -262,6 +262,15 @@ int run_uint(uint64_t value, size_t enc_size)
   printf("Encoding: %zu bytes .. ", buf.cur_len);
   CHECKME(buf.cur_len != enc_size);
   
+  /* human readable form */
+  printf("Printed:");
+  tp_syn_print_atom(&buf);
+  printf(" .. ");
+  CHECKME(tp_errno);
+  
+  /* reset buffer parsing */
+  buf.parse_idx = 0;
+  
   /* decode data */
   printf("Decoding data .. ");
   CHECKME(tp_syn_dec_uint(&dec_val, &buf));
@@ -295,6 +304,15 @@ int run_sint(int64_t value, size_t enc_size)
   dump_buf(&buf);
   printf("Encoding: %zu bytes .. ", buf.cur_len);
   CHECKME(buf.cur_len != enc_size);
+  
+  /* human readable form */
+  printf("Printed:");
+  tp_syn_print_atom(&buf);
+  printf(" .. ");
+  CHECKME(tp_errno);
+  
+  /* reset buffer parsing */
+  buf.parse_idx = 0;
   
   /* decode data */
   printf("Decoding data .. ");
@@ -336,6 +354,15 @@ int run_bin(size_t bin_size, size_t enc_size)
   dump_buf(&buf);
   printf("Encoding: %zu bytes .. ", buf.cur_len);
   CHECKME(buf.cur_len != enc_size);
+  
+  /* human readable form */
+  printf("Printed:");
+  tp_syn_print_atom(&buf);
+  printf(" .. ");
+  CHECKME(tp_errno);
+  
+  /* reset buffer parsing */
+  buf.parse_idx = 0;
   
   /* decode data */
   printf("Decoding data .. ");

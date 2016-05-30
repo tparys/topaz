@@ -261,6 +261,11 @@ tp_errno_t tp_swg_invoke(tp_handle_t *dev, tp_buffer_t *response,
     }
     
     tp_debug_dump(work.ptr, work.cur_len);
+    if (tp_syn_print(&work))
+    {
+      printf("Did not parse! - %s\n", tp_errno_lookup_cur());
+    }
+    
   }
   
   return tp_errno = TP_ERR_SUCCESS;
