@@ -160,6 +160,18 @@ tp_errno_t tp_syn_enc_sint(tp_buffer_t *tgt, int64_t value);
 tp_errno_t tp_syn_enc_bin(tp_buffer_t *tgt, void const *ptr, size_t len);
 
 /**
+ * \brief Encode String
+ *
+ * Encode string as binary blob in SWG binary syntax
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] ptr Data to encode as atom
+ * \param[in] len Data length
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_enc_str(tp_buffer_t *tgt, char const *str);
+
+/**
  * \brief Encode Half UID
  *
  * Encode Half UID in typical SWG form (4 byte binary blob)
@@ -242,14 +254,15 @@ tp_errno_t tp_syn_dec_sint(int64_t *value, tp_buffer_t *tgt);
 tp_errno_t tp_syn_dec_bin(tp_buffer_t *value, tp_buffer_t *tgt);
 
 /**
- * \brief Display encoded data item
+ * \brief Decode UID
  *
- * Print human readable version of encoded SWG data item.
+ * Decode UID stored as binary blob, and advance pointers.
  *
- * \param[in,out] data SWG data to show
+ * \param[out] value Numeric UID value
+ * \param[in,out] buf Input data stream
  * \return 0 on success, error code indicating failure
  */
-tp_errno_t tp_syn_print_item(tp_buffer_t *data);
+tp_errno_t tp_syn_dec_uid(uint64_t *value, tp_buffer_t *tgt);
 
 /**
  * \brief Display encoded data atom

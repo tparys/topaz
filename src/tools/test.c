@@ -25,11 +25,6 @@ int main()
     return 1;
   }
   
-  if (tp_swg_invoke(handle, &buf, TP_SWG_SMUID, TP_SWG_PROPERTIES, NULL))
-  {
-    printf("I/O fail : %s\n", tp_errno_lookup_cur());
-  }
-  
   tp_close(handle);
   handle = NULL;
   

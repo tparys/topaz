@@ -127,12 +127,23 @@ tp_errno_t tp_buf_trim_right(tp_buffer_t *tgt, size_t count);
 /**
  * \brief Peek at next byte for parsing
  *
- *  Peek at next byte for parsing
+ * Peek at next byte for parsing
  *
+ * \param[out] byte Next byte in stream
  * \param[in,out] buf Target data buffer
- * \param[in] count Number of bytes to remove
  * \return 0 on success, error code indicating failure
  */
 tp_errno_t tp_buf_peek(uint8_t *byte, tp_buffer_t *tgt);
+
+/**
+ * \brief Compare buffer against string
+ *
+ * Peek at next byte for parsing
+ *
+ * \param[in,out] buf Data buffer for comparison
+ * \param[in] ref Reference string for comparison
+ * \return Non zero on match, 0 otherwise
+ */
+int tp_buf_cmp_str(tp_buffer_t *tgt, char const *ref);
 
 #endif

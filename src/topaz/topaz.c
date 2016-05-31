@@ -42,6 +42,7 @@
 #include <topaz/transport_ata.h>
 #include <topaz/security.h>
 #include <topaz/discovery.h>
+#include <topaz/swg_core.h>
 
 /**
  * \brief Open Drive / Trusted Peripheral (TPer)
@@ -63,9 +64,11 @@ tp_handle_t *tp_open(char const *path)
     return NULL;
   }
   
-  /* initial assumptions until we know better */
+  /* Default assumptions about TPer(drive), until it tell us better.
+   * NOTE that these are from SWG core spec */
   handle->lba_align = 1;
-  handle->max_com_packet_size = 1024;
+  handle->max_com_pkt_size = 1024;
+  handle->max_token_size = 968;
   
   /* open ATA device */
   if ((handle->ata = tp_ata_open(path)) == NULL)
@@ -94,6 +97,12 @@ tp_handle_t *tp_open(char const *path)
   /* reset the SSC's ComID, if possible */
   else if ((handle->has_reset) &&
 	   (tp_security_comid_reset(handle, handle->com_id) != 0))
+  {
+    rc = tp_errno;
+  }
+  
+  /* perform host properties handshake */
+  else if (tp_swg_do_properties(handle))
   {
     rc = tp_errno;
   }

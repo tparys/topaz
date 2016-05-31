@@ -92,7 +92,7 @@ tp_errno_t tp_swg_send(tp_handle_t *dev, tp_buffer_t const *payload,
   tot_size = TP_PAD_MULTIPLE(tot_size, TP_ATA_BLOCK_SIZE);
   
   /* Make sure the drive can handle this data */
-  if (tot_size > dev->max_com_packet_size)
+  if (tot_size > dev->max_com_pkt_size)
   {
     return tp_errno = TP_ERR_PACKET_SIZE;
   }
@@ -153,7 +153,7 @@ tp_errno_t tp_swg_recv(tp_buffer_t *payload, tp_handle_t *dev)
   {
     /* Receive formatted Com Packet */
     if (tp_ata_if_recv(dev->ata, 1, dev->com_id, dev->io_block,
-		       dev->max_com_packet_size / TP_ATA_BLOCK_SIZE))
+		       dev->max_com_pkt_size / TP_ATA_BLOCK_SIZE))
     {
       return tp_errno;
     }
@@ -161,7 +161,7 @@ tp_errno_t tp_swg_recv(tp_buffer_t *payload, tp_handle_t *dev)
     /* Do some cursory verification here */
     if (be16toh(header->com.com_id) != dev->com_id)
     {
-      tp_debug_dump(dev->io_block, sizeof(dev->io_block));
+      /* tp_debug_dump(dev->io_block, sizeof(dev->io_block)); */
       return tp_errno = TP_ERR_BAD_COMID;
     }
     if (be32toh(header->com.length) == 0)
@@ -224,11 +224,32 @@ tp_errno_t tp_swg_invoke(tp_handle_t *dev, tp_buffer_t *response,
   use_session_ids = (obj_uid == TP_SWG_SMUID ? 0 : 1);
   
   /* encode method, and perform I/O */
-  if ((tp_syn_enc_method(&work, TP_SWG_SMUID, TP_SWG_PROPERTIES, args)) ||
-      (tp_swg_send(dev, &work, use_session_ids)) ||
+  if (tp_syn_enc_method(&work, TP_SWG_SMUID, TP_SWG_PROPERTIES, args))
+  {
+    return tp_errno;
+  }
+  
+  /* debug for the curious */
+  TP_DEBUG(3) {
+    printf("SWG TX: ");
+    tp_syn_print(&work);
+    printf("\n");
+    work.parse_idx = 0;
+  }
+  
+  /* off it goes */
+  if ((tp_swg_send(dev, &work, use_session_ids)) ||
       (tp_swg_recv(&work, dev)))
   {
     return tp_errno;
+  }
+
+  /* debug for the curious */
+  TP_DEBUG(3) {
+    printf("SWG RX: ");
+    tp_syn_print(&work);
+    printf("\n");
+    work.parse_idx = 0;
   }
   
   /* NOTE - work.ptr now points within dev->io_block via tp_swg_recv() */
@@ -260,12 +281,11 @@ tp_errno_t tp_swg_invoke(tp_handle_t *dev, tp_buffer_t *response,
       return tp_errno;
     }
     
-    tp_debug_dump(work.ptr, work.cur_len);
-    if (tp_syn_print(&work))
-    {
-      printf("Did not parse! - %s\n", tp_errno_lookup_cur());
-    }
-    
+    /* set up return buffer */
+    response->byte_ptr = work.byte_ptr + work.parse_idx;
+    response->cur_len = work.cur_len - work.parse_idx;
+    response->max_len = response->cur_len;
+    response->parse_idx = 0;
   }
   
   return tp_errno = TP_ERR_SUCCESS;
@@ -286,5 +306,159 @@ tp_errno_t tp_swg_invoke(tp_handle_t *dev, tp_buffer_t *response,
  */
 tp_errno_t tp_swg_do_properties(tp_handle_t *dev)
 {
-  return tp_errno = TP_ERR_UNSPECIFIED;
+  tp_buffer_t props, key;
+  uint64_t value;
+  uint8_t next;
+  
+  /* Our comm settings */
+  uint64_t host_max_pkt_size = sizeof(dev->io_block);
+  uint64_t host_max_token_size = host_max_pkt_size - 56;
+  
+  /* Default assumptions about TPer(drive), until it tell us better.
+   * NOTE that these are from SWG core spec */
+  uint64_t drive_max_pkt_size = 1024;
+  uint64_t drive_max_token_size = 968;
+  
+  /*
+   * Setting up outbound method arguments
+   */
+
+  /* initialize */
+  char raw[512];
+  memset(&props, 0, sizeof(props));
+  props.ptr = raw;
+  props.max_len = sizeof(raw);
+  
+  /* start of named argument (HostProperties) */
+  if (tp_buf_add_byte(&props, TP_SWG_START_NAME))
+  {
+    return tp_errno;
+  }
+  
+  /* Unfortunately, the form of this argument differs based on spec */
+  if (dev->ssc_type == TP_SSC_ENTERPRISE)
+  {
+    /* Enterprise uses a string */
+    if (tp_syn_enc_str(&props, "HostProperties"))
+    {
+      return tp_errno;
+    }
+  }
+  else if (dev->ssc_type == TP_SSC_OPAL)
+  {
+    /* Opal (and derivitives) use a integer enum */
+    if (tp_syn_enc_uint(&props, 0))
+    {
+      return tp_errno;
+    }
+  }
+  else
+  {
+    /* some unrecognized SSC type */
+    return tp_errno = TP_ERR_NO_SSC;
+  }
+  
+  /* the rest is identical ... */
+  if ((tp_buf_add_byte(&props, TP_SWG_START_LIST)) ||
+      
+      /* max com packet size */
+      (tp_buf_add_byte(&props, TP_SWG_START_NAME)) ||
+      (tp_syn_enc_str(&props, "MaxComPacketSize")) ||
+      (tp_syn_enc_uint(&props, host_max_pkt_size)) ||
+      (tp_buf_add_byte(&props, TP_SWG_END_NAME)) ||
+      
+      /* max packet size */
+      (tp_buf_add_byte(&props, TP_SWG_START_NAME)) ||
+      (tp_syn_enc_str(&props, "MaxPacketSize")) ||
+      (tp_syn_enc_uint(&props, host_max_pkt_size - 20)) ||
+      (tp_buf_add_byte(&props, TP_SWG_END_NAME)) ||
+      
+      /* max token size */
+      (tp_buf_add_byte(&props, TP_SWG_START_NAME)) ||
+      (tp_syn_enc_str(&props, "MaxIndTokenSize")) ||
+      (tp_syn_enc_uint(&props, host_max_token_size)) ||
+      (tp_buf_add_byte(&props, TP_SWG_END_NAME)) ||
+      
+      /* max aggregate token size */
+      (tp_buf_add_byte(&props, TP_SWG_START_NAME)) ||
+      (tp_syn_enc_str(&props, "MaxAggTokenSize")) ||
+      (tp_syn_enc_uint(&props, host_max_token_size)) ||
+      (tp_buf_add_byte(&props, TP_SWG_END_NAME)) ||
+      
+      /* syntatic sugar */
+      (tp_buf_add_byte(&props, TP_SWG_END_LIST)) ||
+      (tp_buf_add_byte(&props, TP_SWG_END_NAME)))
+  {
+    return tp_errno;
+  }
+  
+  /* Invoke HostProperties method on Session Manager */
+  if (tp_swg_invoke(dev, &props, TP_SWG_SMUID, TP_SWG_PROPERTIES, &props))
+  {
+    return tp_errno;
+  }
+  
+  /* Return data is a list of named data types of form (string = uint) */
+  
+  /* first get rid of the starting / ending list tokens */
+  if ((tp_buf_trim_left(&props, 1)) ||
+      (tp_buf_trim_right(&props, 1)))
+  {
+    return tp_errno;
+  }
+  
+  /* then parse start name, string, uint, end name
+   * NOTE - this ignores the fact that the TPer responds with a copy
+   * of our proposed host properties. the below code doesn't really
+   * look for it, and therefore exits quietly when it sees something
+   * it doesn't expect (TL;DR - it works, but make this better?) */
+  
+  while (1)
+  {
+    /* start of named value */
+    if ((tp_buf_peek(&next, &props)) ||
+	(next != TP_SWG_START_NAME))
+    {
+      break;
+    }
+    props.parse_idx++;
+    
+    /* name - a string (key) and
+     * value - a uint (value) */
+    if ((tp_syn_dec_bin(&key, &props)) ||
+	(tp_syn_dec_uint(&value, &props)))
+    {
+      break;
+    }
+    
+    /* end of named value */
+    if ((tp_buf_peek(&next, &props)) ||
+	(next != TP_SWG_END_NAME))
+    {
+      break;
+    }
+    props.parse_idx++;
+    
+    /* Only care about a few parameters ... */
+    if (tp_buf_cmp_str(&key, "MaxComPacketSize"))
+    {
+      drive_max_pkt_size = value;
+    }
+    else if (tp_buf_cmp_str(&key, "MaxIndTokenSize"))
+    {
+      drive_max_token_size = value;
+    }
+  }
+  
+  /* Comms based on minimum capabilities of both sides */
+  dev->max_com_pkt_size = (drive_max_pkt_size < host_max_pkt_size ?
+			   drive_max_pkt_size : host_max_pkt_size);
+  dev->max_token_size = (drive_max_token_size < host_max_token_size ?
+			 drive_max_token_size : host_max_token_size);
+  
+  /* debug for the interested */
+  TP_DEBUG(2) printf("MaxComPktSize is now %zu\n", dev->max_com_pkt_size);
+  TP_DEBUG(2) printf("MaxIndTokenSize is now %zu\n", dev->max_token_size);
+  
+  return tp_errno = TP_ERR_SUCCESS;
 }

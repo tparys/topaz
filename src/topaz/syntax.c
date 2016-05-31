@@ -249,6 +249,21 @@ tp_errno_t tp_syn_enc_bin(tp_buffer_t *tgt, void const *ptr, size_t len)
 }
 
 /**
+ * \brief Encode String
+ *
+ * Encode string as binary blob in SWG binary syntax
+ *
+ * \param[in,out] buf Target data buffer
+ * \param[in] ptr Data to encode as atom
+ * \param[in] len Data length
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_enc_str(tp_buffer_t *tgt, char const *str)
+{
+  return tp_syn_enc_bin(tgt, str, strlen(str));
+}
+
+/**
  * \brief Encode Half UID
  *
  * Encode Half UID in typical SWG form (4 byte binary blob)
@@ -301,35 +316,42 @@ tp_errno_t tp_syn_enc_method(tp_buffer_t *tgt, uint64_t obj_uid,
   }
   
   /* build the method call */
-  return tp_buf_add_byte(tgt, TP_SWG_CALL) ||
-
-    /* followed by object / method UIDs */
-    tp_syn_enc_uid(tgt, obj_uid) ||
-    tp_syn_enc_uid(tgt, method_uid) ||
+  if ((tp_buf_add_byte(tgt, TP_SWG_CALL)) ||
+      
+      /* followed by object / method UIDs */
+      (tp_syn_enc_uid(tgt, obj_uid)) ||
+      (tp_syn_enc_uid(tgt, method_uid)) ||
+      
+      /* start of argument list */
+      (tp_buf_add_byte(tgt, TP_SWG_START_LIST)) ||
+      
+      /* arguments themselves are optional */
+      ((args != NULL) && (tp_buf_add_buf(tgt, args))) ||
+      
+      /* end of argument list */
+      (tp_buf_add_byte(tgt, TP_SWG_END_LIST)) ||
     
-    /* start of argument list */
-    tp_buf_add_byte(tgt, TP_SWG_START_LIST) ||
+      /*
+       * the end of the method call can be used for terminating long-running
+       * processes (re-encryption of data bands, for example). But outside of
+       * that, these bytes are generally constant, and we're going to ignore
+       * them for now ...
+       */
+      (tp_buf_add_byte(tgt, TP_SWG_END_OF_DATA)) ||
     
-    /* arguments themselves are optional */
-    ((args != NULL) && (tp_buf_add_buf(tgt, args))) ||
-    
-    /* end of argument list */
-    tp_buf_add_byte(tgt, TP_SWG_END_LIST) ||
-    
-    /*
-     * the end of the method call can be used for terminating long-running
-     * processes (re-encryption of data bands, for example). But outside of
-     * that, these bytes are generally constant, and we're going to ignore
-     * them for now ...
-     */
-    tp_buf_add_byte(tgt, TP_SWG_END_OF_DATA) ||
-    
-    /* nominally, method status is basically a list of three zeros ... */
-    tp_buf_add_byte(tgt, TP_SWG_START_LIST) ||
-    tp_syn_enc_uint(tgt, 0) ||
-    tp_syn_enc_uint(tgt, 0) ||
-    tp_syn_enc_uint(tgt, 0) ||
-    tp_buf_add_byte(tgt, TP_SWG_END_LIST);
+      /* nominally, method status is basically a list of three zeros ... */
+      (tp_buf_add_byte(tgt, TP_SWG_START_LIST)) ||
+      (tp_syn_enc_uint(tgt, 0)) ||
+      (tp_syn_enc_uint(tgt, 0)) ||
+      (tp_syn_enc_uint(tgt, 0)) ||
+      (tp_buf_add_byte(tgt, TP_SWG_END_LIST)))
+  {
+    return tp_errno;
+  }
+  else
+  {
+    return tp_errno = TP_ERR_SUCCESS;
+  }
 }
 
 /**
@@ -465,7 +487,7 @@ tp_errno_t tp_syn_dec_uint(uint64_t *value, tp_buffer_t *tgt)
   {
     return tp_errno = TP_ERR_NULL;
   }
-  data_ptr = (uint8_t*)tgt->ptr;
+  data_ptr = (uint8_t*)tgt->ptr + tgt->parse_idx;
   
   /* figure out what's there */
   if (tp_syn_dec_atom_header(&header_info, tgt))
@@ -529,7 +551,7 @@ tp_errno_t tp_syn_dec_sint(int64_t *value, tp_buffer_t *tgt)
   {
     return tp_errno = TP_ERR_NULL;
   }
-  data_ptr = (uint8_t*)tgt->ptr;
+  data_ptr = (uint8_t*)tgt->ptr + tgt->parse_idx;
   
   /* figure out what's there */
   if (tp_syn_dec_atom_header(&header_info, tgt))
@@ -584,6 +606,43 @@ tp_errno_t tp_syn_dec_sint(int64_t *value, tp_buffer_t *tgt)
   /* advance pointers */
   tgt->parse_idx += header_info.header_bytes;
   tgt->parse_idx += header_info.data_bytes;
+  
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief Decode UID
+ *
+ * Decode UID stored as binary blob, and advance pointers.
+ *
+ * \param[out] value Numeric UID value
+ * \param[in,out] buf Input data stream
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_dec_uid(uint64_t *value, tp_buffer_t *tgt)
+{
+  /* store buffer state in case this doesn't look like a UID */
+  tp_buffer_t bin_data, save = *tgt;
+  
+  /* retrieve binary data */
+  if (tp_syn_dec_bin(&bin_data, tgt))
+  {
+    return tp_errno;
+  }
+  
+  /* check to see if it looks like a UID */
+  if ((bin_data.cur_len != 8) ||
+      (bin_data.byte_ptr[bin_data.parse_idx + 0] != 0) ||
+      (bin_data.byte_ptr[bin_data.parse_idx + 4] != 0))
+  {
+    /* restore state */
+    *tgt = save;
+    return tp_errno = TP_ERR_DATATYPE;
+  }
+  
+  /* otherwise convert to integer */
+  memcpy(value, bin_data.byte_ptr + bin_data.parse_idx, 8);
+  *value = be64toh(*value);
   
   return tp_errno = TP_ERR_SUCCESS;
 }
@@ -694,8 +753,8 @@ tp_errno_t tp_syn_print_atom(tp_buffer_t *data)
        * together, it's probably a UID
        */
       else if ((bin_data.cur_len == 8) &&
-	       (bin_data.byte_ptr[0] == 0) &&
-	       (bin_data.byte_ptr[4] == 0))
+	       (bin_data.byte_ptr[bin_data.parse_idx] == 0) &&
+	       (bin_data.byte_ptr[bin_data.parse_idx + 4] == 0))
       {
 	/* Looks like a UID, try to print it as it's original 32 bit ints */
 	uint32_t upper, lower;
@@ -757,7 +816,8 @@ tp_errno_t tp_syn_print_atom(tp_buffer_t *data)
 tp_errno_t tp_syn_print(tp_buffer_t *data)
 {
   tp_syn_atom_info_t info;
-  uint8_t next;
+  uint64_t obj_uid, method_uid;
+  uint8_t next, first_in_loop = 1;
   
   /* check for NULL pointers */
   if ((data == NULL) || (data->ptr == NULL))
@@ -800,12 +860,21 @@ tp_errno_t tp_syn_print(tp_buffer_t *data)
 	  break;
 	}
 	
+	/* comma separator after the first */
+	if (first_in_loop)
+	{
+	  first_in_loop = 0;
+	}
+	else
+	{
+	  printf(",");
+	}
+	
 	/* otherwise recurse */
 	if (tp_syn_print(data))
 	{
 	  return tp_errno;
 	}
-	printf(",");
       }
       
       /* end of list */
@@ -843,6 +912,33 @@ tp_errno_t tp_syn_print(tp_buffer_t *data)
 	return tp_errno = TP_ERR_DATATYPE;
       }
       data->parse_idx++;
+      break;
+      
+    case TP_SWG_CALL: /* method call */
+      
+      /* start of method call */
+      data->parse_idx++;
+      
+      /* object & method uids */
+      if ((tp_syn_dec_uid(&obj_uid, data)) ||
+	  (tp_syn_dec_uid(&method_uid, data)))
+      {
+	return tp_errno;
+      }
+      
+      /* dump UIDs in a similar form to TCG docs */
+      printf(" %x:%x.%x:%x",
+	     (unsigned int)(obj_uid >> 32),
+	     (unsigned int)(obj_uid),
+	     (unsigned int)(method_uid >> 32),
+	     (unsigned int)(method_uid));
+	     
+      /* lazy way to print the argument list ... */
+      if (tp_syn_print(data))
+      {
+	return tp_errno;
+      }
+      
       break;
       
     default:
