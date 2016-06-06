@@ -111,8 +111,8 @@ tp_errno_t tp_swg_send(tp_handle_t *dev, tp_buffer_t const *payload,
    * (not used for session manager) */
   if (use_session_ids)
   {
-    //header->pkt.tper_session_id = htobe32(tper_session_id);
-    //header->pkt.host_session_id = htobe32(host_session_id);
+    header->pkt.tper_session_id = htobe32(dev->tper_session_id);
+    header->pkt.host_session_id = htobe32(dev->host_session_id);
   }
   
   /* copy over payload data */
@@ -224,7 +224,7 @@ tp_errno_t tp_swg_invoke(tp_handle_t *dev, tp_buffer_t *response,
   use_session_ids = (obj_uid == TP_SWG_SMUID ? 0 : 1);
   
   /* encode method, and perform I/O */
-  if (tp_syn_enc_method(&work, TP_SWG_SMUID, TP_SWG_PROPERTIES, args))
+  if (tp_syn_enc_method(&work, obj_uid, method_uid, args))
   {
     return tp_errno;
   }
@@ -460,5 +460,153 @@ tp_errno_t tp_swg_do_properties(tp_handle_t *dev)
   TP_DEBUG(2) printf("MaxComPktSize is now %zu\n", dev->max_com_pkt_size);
   TP_DEBUG(2) printf("MaxIndTokenSize is now %zu\n", dev->max_token_size);
   
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief Start Session
+ *
+ * Begin anonymous session with target Security Provider (SP)
+ *
+ * \param[in,out] dev Target drive
+ * \param[in] UID of SP object
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_session_start(tp_handle_t *dev, uint64_t sp_uid)
+{
+  tp_buffer_t args, resp;
+  char raw[64];
+  uint64_t host_id, value;
+  
+  /* Check for NULL pointer */
+  if (dev == NULL)
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  
+  /* initialize buffer */
+  memset(raw, 0, sizeof(raw));
+  memset(&args, 0, sizeof(args));
+  args.ptr = raw;
+  args.max_len = sizeof(raw);
+  
+  /* Ideally, this should be a unique value, but doesn't really matter */
+  host_id = 1;
+  
+  /* session startup uses three arguments */
+  if ((tp_syn_enc_uint(&args, host_id)) ||
+      (tp_syn_enc_uid(&args, sp_uid)) ||
+      (tp_syn_enc_uint(&args, 1)))         /* read/write flag */
+  {
+    return tp_errno;
+  }
+  
+  /* call the session manager */
+  if (tp_swg_invoke(dev, &resp, TP_SWG_SMUID,
+ 		    TP_SWG_START_SESSION, &args))
+  {
+    return tp_errno;
+  }
+  
+  /* first value in return should match our chosen host ID */
+  if (tp_syn_dec_uint(&value, &resp))
+  {
+    return tp_errno;
+  }
+  else if (value != host_id)
+  {
+    /* probably a malformed response */
+    return tp_errno = TP_ERR_MALFORMED;
+  }
+
+  /* next value should be our TPer session ID */
+  if (tp_syn_dec_uint(&value, &resp))
+  {
+    return tp_errno;
+  }
+  
+  /* looks good, we're up */
+  dev->host_session_id = host_id;
+  dev->tper_session_id = value;   /* return from drive */
+
+  TP_DEBUG(1) printf("Anonymous Session %x:%x Started\n",
+		     dev->tper_session_id,
+		     dev->host_session_id);
+  
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief End Session
+ *
+ * Cleanly terminate current session
+ *
+ * \param[in,out] dev Target drive
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_session_end(tp_handle_t *dev)
+{
+  tp_buffer_t buf;
+  char raw[64];
+  
+  /* Check for NULL pointer */
+  if (dev == NULL)
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+
+  /* Nothing to do if no current session */
+  if (dev->host_session_id == 0)
+  {
+    return tp_errno = TP_ERR_SUCCESS;
+  }
+
+  /* initialize buffer */
+  memset(raw, 0, sizeof(raw));
+  memset(&buf, 0, sizeof(buf));
+  buf.ptr = raw;
+  buf.max_len = sizeof(raw);
+
+  /* just need to send the end session token */
+  if ((tp_buf_add_byte(&buf, TP_SWG_END_SESSION)) ||
+      (tp_swg_send(dev, &buf, 1)) ||
+      (tp_swg_recv(&buf, dev)))
+  {
+    return tp_errno;
+  }
+
+  /* if all went well, we should receive a single byte in response */
+  if ((buf.cur_len != 1) ||
+      (buf.byte_ptr[0] != TP_SWG_END_SESSION))
+  {
+    return tp_errno = TP_ERR_MALFORMED;
+  }
+  
+  TP_DEBUG(1) printf("Session %x:%x Stopped\n",
+		     dev->tper_session_id,
+		     dev->host_session_id);
+  return tp_swg_session_forget(dev);
+}
+
+/**
+ * \brief Forget Session
+ *
+ * Mark current session as terminated, without performing handshake
+ *
+ * \param[in,out] dev Target drive
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_session_forget(tp_handle_t *dev)
+{
+  /* Check for NULL pointer */
+  if (dev == NULL)
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+
+  /* Forget current session */
+  dev->tper_session_id = 0;
+  dev->host_session_id = 0;
+
   return tp_errno = TP_ERR_SUCCESS;
 }

@@ -134,4 +134,35 @@ tp_errno_t tp_swg_invoke(tp_handle_t *dev, tp_buffer_t *response,
  */
 tp_errno_t tp_swg_do_properties(tp_handle_t *dev);
 
+/**
+ * \brief Start Session
+ *
+ * Begin anonymous session with target Security Provider (SP)
+ *
+ * \param[in,out] dev Target drive
+ * \param[in] UID of SP object
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_session_start(tp_handle_t *dev, uint64_t sp_uid);
+
+/**
+ * \brief End Session
+ *
+ * Cleanly terminate current session
+ *
+ * \param[in,out] dev Target drive
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_session_end(tp_handle_t *dev);
+
+/**
+ * \brief Forget Session
+ *
+ * Mark current session as terminated, without performing handshake
+ *
+ * \param[in,out] dev Target drive
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_session_forget(tp_handle_t *dev);
+
 #endif

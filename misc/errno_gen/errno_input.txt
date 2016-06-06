@@ -24,6 +24,7 @@ NO_SSC : Unrecognized SSC messaging type
 COMID_RESET : Cannot reset specified ComID
 BAD_COMID : Unexpected ComID in TPM response
 TIMEOUT : Timeout waiting for TPM response
+MALFORMED : Bad / Malformed response from TPM
 
 @SWG Method Call Statuses
 

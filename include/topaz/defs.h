@@ -77,6 +77,12 @@ typedef struct
   
   /** Largest valid ComPacketSize for session */
   size_t max_token_size;
+
+  /** Session ID data for Trusted Peripheral (Drive) */
+  uint32_t tper_session_id;
+  
+  /** Session ID data for Host */
+  uint32_t host_session_id;
   
   /** Space for doing I/O (non-reentrant) */
   char io_block[MAX_IO_BLOCK];

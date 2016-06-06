@@ -66,6 +66,7 @@ struct
   { TP_ERR_COMID_RESET    , "Cannot reset specified ComID" },
   { TP_ERR_BAD_COMID      , "Unexpected ComID in TPM response" },
   { TP_ERR_TIMEOUT        , "Timeout waiting for TPM response" },
+  { TP_ERR_MALFORMED      , "Bad / Malformed response from TPM" },
 
   /* SWG Method Call Statuses */
 

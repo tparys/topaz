@@ -759,10 +759,10 @@ tp_errno_t tp_syn_print_atom(tp_buffer_t *data)
 	/* Looks like a UID, try to print it as it's original 32 bit ints */
 	uint32_t upper, lower;
 	memcpy(&upper, bin_data.byte_ptr + 0, 4);
-	lower = be32toh(lower);
+	upper = be32toh(upper);
 	memcpy(&lower, bin_data.byte_ptr + 4, 4);
 	lower = be32toh(lower);
-	printf(" %u:%u", upper, lower);
+	printf(" %x:%x", upper, lower);
       }
       
       /* otherwise, dump the first few bytes of the binary data */

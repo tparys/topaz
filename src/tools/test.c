@@ -25,6 +25,8 @@ int main()
     return 1;
   }
   
+  tp_swg_session_start(handle, TP_SWG_SP_ADMIN);
+  
   tp_close(handle);
   handle = NULL;
   

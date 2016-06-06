@@ -96,6 +96,9 @@ typedef enum
   /** Timeout waiting for TPM response */
   TP_ERR_TIMEOUT         = 0x00020006,
 
+  /** Bad / Malformed response from TPM */
+  TP_ERR_MALFORMED       = 0x00020007,
+
 /* SWG Method Call Statuses */
 
   /** Call Failure - Success */

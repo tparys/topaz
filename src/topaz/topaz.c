@@ -136,6 +136,7 @@ tp_errno_t tp_close(tp_handle_t *handle)
     /* close ATA device */
     if (handle->ata != NULL)
     {
+      tp_swg_session_end(handle);
       tp_ata_close(handle->ata);
       handle->ata = NULL;
     }
