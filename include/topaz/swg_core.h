@@ -165,4 +165,31 @@ tp_errno_t tp_swg_session_end(tp_handle_t *dev);
  */
 tp_errno_t tp_swg_session_forget(tp_handle_t *dev);
 
+/**
+ * \brief Get Column By String (Obsolete)
+ *
+ * Retrieve data stored in column of target table by column name.
+ *
+ * \param[out] ret Encoded value stored in table
+ * \param[in,out] dev Target drive
+ * \param[in,out] table_uid UID of target table object
+ * \param[in] col String representing desired column in table
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_get_by_str(tp_buffer_t *value, tp_handle_t *dev,
+			     uint64_t table_uid, char const *col);
+
+/**
+ * \brief Get Column By String
+ *
+ * Retrieve data stored in column of target table by column number.
+ *
+ * \param[out] ret Encoded value stored in table
+ * \param[in,out] dev Target drive
+ * \param[in] col Unsigned integer representing desired column in table
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_get_by_num(tp_buffer_t *value, tp_handle_t *dev,
+			     uint64_t table_uid, uint64_t col);
+
 #endif

@@ -1,6 +1,6 @@
 
 SUCCESS : No error reported
-UNSPECIFIED : Unspecified error
+UNIMPLEMENTED : Feature not yet implemented
 OPEN : Error opening file
 CLOSE : Error opening file
 INVALID : Invalid argument

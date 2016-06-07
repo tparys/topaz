@@ -12,7 +12,7 @@ int main()
 {
   tp_handle_t *handle = NULL;
   char raw[512] = {0};
-  tp_buffer_t buf, ret;
+  tp_buffer_t buf, ret, pin;
   memset(&buf, 0, sizeof(buf));
   buf.ptr = raw;
   buf.max_len = sizeof(raw);
@@ -25,7 +25,18 @@ int main()
     return 1;
   }
   
-  tp_swg_session_start(handle, TP_SWG_SP_ADMIN);
+  if ((tp_swg_session_start(handle, TP_SWG_SP_ADMIN)) ||
+      (tp_swg_get_by_num(&ret, handle, TP_SWG_C_PIN_MSID, 3)) ||
+      (tp_syn_dec_bin(&pin, &ret)))
+  {
+    printf("Failure reported: %s\n", tp_errno_lookup_cur());
+  }
+  else
+  {
+    printf("Got a PIN - %u bytes\n", (unsigned int)pin.cur_len);
+    fwrite(pin.ptr, 1, pin.cur_len, stdout);
+    printf("\n");
+  }
   
   tp_close(handle);
   handle = NULL;

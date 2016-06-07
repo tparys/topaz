@@ -38,8 +38,8 @@ typedef enum
   /** No error reported */
   TP_ERR_SUCCESS         = 0x00000000,
 
-  /** Unspecified error */
-  TP_ERR_UNSPECIFIED     = 0x00000001,
+  /** Feature not yet implemented */
+  TP_ERR_UNIMPLEMENTED   = 0x00000001,
 
   /** Error opening file */
   TP_ERR_OPEN            = 0x00000002,

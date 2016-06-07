@@ -45,15 +45,6 @@ enum
   
   /* ========= METHODS ========= */
   
-  /** Get Data (SWG Obsolete, Enterprise only) */
-  TP_ENTER_GET = TP_UID(0x6, 0x6),
-
-  /** Set Data (SWG Obsolete, Enterprise only) */
-  TP_ENTER_SET = TP_UID(0x6, 0x7),
-
-  /** Authenticate / Login (SWG Obsolete, Enterprise only) */
-  TP_ENTER_AUTHENTICATE = TP_UID(0x6, 0xc),
-
 };
 
 #endif

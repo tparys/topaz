@@ -30,7 +30,6 @@
  */
 
 #include <stdio.h>
-
 #include <unistd.h>
 #include <string.h>
 #include <endian.h>
@@ -39,7 +38,6 @@
 #include <topaz/swg_core.h>
 #include <topaz/transport_ata.h>
 #include <topaz/syntax.h>
-
 #include <topaz/debug.h>
 
 /* Pad to value to mutiple of another */
@@ -186,7 +184,6 @@ tp_errno_t tp_swg_recv(tp_buffer_t *payload, tp_handle_t *dev)
   return tp_errno = TP_ERR_SUCCESS;
 }
 
-
 /**
  * \brief Invoke Method
  *
@@ -231,7 +228,7 @@ tp_errno_t tp_swg_invoke(tp_handle_t *dev, tp_buffer_t *response,
   
   /* debug for the curious */
   TP_DEBUG(3) {
-    printf("SWG TX: ");
+    printf("SWG TX:");
     tp_syn_print(&work);
     printf("\n");
     work.parse_idx = 0;
@@ -246,7 +243,7 @@ tp_errno_t tp_swg_invoke(tp_handle_t *dev, tp_buffer_t *response,
 
   /* debug for the curious */
   TP_DEBUG(3) {
-    printf("SWG RX: ");
+    printf("SWG RX:");
     tp_syn_print(&work);
     printf("\n");
     work.parse_idx = 0;
@@ -608,5 +605,163 @@ tp_errno_t tp_swg_session_forget(tp_handle_t *dev)
   dev->tper_session_id = 0;
   dev->host_session_id = 0;
 
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief Get Column By String (Obsolete)
+ *
+ * Retrieve data stored in column of target table by column name.
+ *
+ * \param[out] ret Encoded value stored in table
+ * \param[in,out] dev Target drive
+ * \param[in,out] table_uid UID of target table object
+ * \param[in] col String representing desired column in table
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_get_by_str(tp_buffer_t *value, tp_handle_t *dev,
+			     uint64_t table_uid, char const *col)
+{
+  tp_buffer_t args, ret, tmp;
+  tp_syn_atom_info_t info;
+  char raw[128];
+
+  /* Check for NULL pointers */
+  if ((value == NULL) || (dev == NULL) || (col == NULL))
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+
+  /* initialize args */
+  memset(&args, 0, sizeof(args));
+  memset(raw, 0, sizeof(raw));
+  args.ptr = raw;
+  args.max_len = sizeof(raw);
+
+  /* Method arguments defined in Draft 0.9 version of SWG spec ... */
+  if ((tp_buf_add_byte(&args, TP_SWG_START_LIST)) ||
+      (tp_buf_add_byte(&args, TP_SWG_START_NAME)) ||
+      (tp_syn_enc_str(&args, "startColumn")) ||
+      (tp_syn_enc_str(&args, col)) ||
+      (tp_buf_add_byte(&args, TP_SWG_END_NAME)) ||
+      (tp_buf_add_byte(&args, TP_SWG_START_NAME)) ||
+      (tp_syn_enc_str(&args, "endColumn")) ||
+      (tp_syn_enc_str(&args, col)) ||
+      (tp_buf_add_byte(&args, TP_SWG_END_NAME)) ||
+      (tp_buf_add_byte(&args, TP_SWG_END_LIST)))
+  {
+    return tp_errno;
+  }
+  
+  /* using the obsolete get method */
+  if (tp_swg_invoke(dev, &ret, table_uid, TP_SWG_GET_OBS, &args))
+  {
+    return tp_errno;
+  }
+  
+  /* check return pattern */
+  if ((tp_syn_dec_byte(&ret, TP_SWG_START_LIST)) ||
+      (tp_syn_dec_byte(&ret, TP_SWG_START_LIST)) ||
+      (tp_syn_dec_byte(&ret, TP_SWG_START_NAME)) ||
+      (tp_syn_dec_bin(&tmp, &ret)))
+  {
+    return tp_errno;
+  }
+
+  /* ensure column name matches */
+  if ((tmp.cur_len != strlen(col)) ||
+      (memcmp(tmp.ptr, col, tmp.cur_len) != 0))
+  {
+    return tp_errno = TP_ERR_SYNTAX;
+  }
+
+  /* next item is our data, trim up to the end of the next atom */
+  if ((tp_syn_dec_atom_header(&info, &ret)) ||
+      (tp_buf_trim_left(&ret, ret.parse_idx)))
+  {
+    return tp_errno;
+  }
+
+  /* fix length and done */
+  ret.cur_len = info.header_bytes + info.data_bytes;
+  *value = ret;
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
+ * \brief Get Column By String
+ *
+ * Retrieve data stored in column of target table by column number.
+ *
+ * \param[out] ret Encoded value stored in table
+ * \param[in,out] dev Target drive
+ * \param[in] col Unsigned integer representing desired column in table
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_swg_get_by_num(tp_buffer_t *value, tp_handle_t *dev,
+			     uint64_t table_uid, uint64_t col)
+{
+  tp_buffer_t args, ret;
+  tp_syn_atom_info_t info;
+  uint64_t tmp;
+  char raw[128];
+
+  /* Check for NULL pointers */
+  if ((value == NULL) || (dev == NULL))
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+
+  /* initialize args */
+  memset(&args, 0, sizeof(args));
+  memset(raw, 0, sizeof(raw));
+  args.ptr = raw;
+  args.max_len = sizeof(raw);
+
+  /* Method arguments defined in Draft 0.9 version of SWG spec ... */
+  if ((tp_buf_add_byte(&args, TP_SWG_START_LIST)) ||
+      (tp_buf_add_byte(&args, TP_SWG_START_NAME)) ||
+      (tp_syn_enc_uint(&args, 3)) || /* startColumn */
+      (tp_syn_enc_uint(&args, col)) ||
+      (tp_buf_add_byte(&args, TP_SWG_END_NAME)) ||
+      (tp_buf_add_byte(&args, TP_SWG_START_NAME)) ||
+      (tp_syn_enc_uint(&args, 4)) || /* endColumn */
+      (tp_syn_enc_uint(&args, col)) ||
+      (tp_buf_add_byte(&args, TP_SWG_END_NAME)) ||
+      (tp_buf_add_byte(&args, TP_SWG_END_LIST)))
+  {
+    return tp_errno;
+  }
+  
+  /* using the obsolete get method */
+  if (tp_swg_invoke(dev, &ret, table_uid, TP_SWG_GET, &args))
+  {
+    return tp_errno;
+  }
+  
+  /* check return pattern */
+  if ((tp_syn_dec_byte(&ret, TP_SWG_START_LIST)) ||
+      (tp_syn_dec_byte(&ret, TP_SWG_START_NAME)) ||
+      (tp_syn_dec_uint(&tmp, &ret)))
+  {
+    return tp_errno;
+  }
+
+  /* ensure column name matches */
+  if (tmp != col)
+  {
+    return tp_errno = TP_ERR_SYNTAX;
+  }
+
+  /* next item is our data, trim up to the end of the next atom */
+  if ((tp_syn_dec_atom_header(&info, &ret)) ||
+      (tp_buf_trim_left(&ret, ret.parse_idx)))
+  {
+    return tp_errno;
+  }
+
+  /* fix length and done */
+  ret.cur_len = info.header_bytes + info.data_bytes;
+  *value = ret;
   return tp_errno = TP_ERR_SUCCESS;
 }

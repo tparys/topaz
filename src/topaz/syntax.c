@@ -355,6 +355,42 @@ tp_errno_t tp_syn_enc_method(tp_buffer_t *tgt, uint64_t obj_uid,
 }
 
 /**
+ * \brief Decode Byte
+ *
+ * Remove next byte from buffer, and compare against expected SWG token
+ *
+ * \param[out] header Data encoding metadata
+ * \param[in] buf Input data stream
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_dec_byte(tp_buffer_t *tgt, uint8_t expected)
+{
+  uint8_t actual;
+
+  /* check for NULL */
+  if (tgt == NULL)
+  {
+    return tp_errno = TP_ERR_NULL;
+  }
+  
+  /* grab next byte */
+  if (tp_buf_peek(&actual, tgt))
+  {
+    return tp_errno;
+  }
+
+  /* compare to expected */
+  if (expected != actual)
+  {
+    return tp_errno = TP_ERR_SYNTAX;
+  }
+
+  tgt->parse_idx++;
+  
+  return tp_errno = TP_ERR_SUCCESS;
+}
+
+/**
  * \brief Decode Atom Header
  *
  * Decode header data from datastream, and determine type of next atom,

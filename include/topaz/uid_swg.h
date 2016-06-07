@@ -52,8 +52,11 @@ enum
   /* Security Identifier (Drive Owner) */
   TP_SWG_SID = TP_UID(0x9, 0x6),
   
-  /* PIN / Password of SID (Drive Owner) */
+  /* PIN / Password of Security Identifier (SID, or Drive Owner) */
   TP_SWG_C_PIN_SID = TP_UID(0xb, 0x1),
+  
+  /* PIN / Password of MSID (Manufactured Default Security ID) */
+  TP_SWG_C_PIN_MSID = TP_UID(0xb, 0x8402),
   
   /* Admin SP (Lifecycle managment) */
   TP_SWG_SP_ADMIN = TP_UID(0x205, 0x1),
@@ -69,8 +72,17 @@ enum
   /** SMUID -  ACK / Response to Session Startup */
   TP_SWG_SYNC_SESSION  = TP_UID(0, 0xff03),
   
+  /** Get Data (Obsolete, used in Enterprise) */
+  TP_SWG_GET_OBS = TP_UID(0x6, 0x6),
+  
+  /** Set Data (Obsolete, used in Enterprise) */
+  TP_SWG_SET_OBS = TP_UID(0x6, 0x7),
+  
   /** Next */
   TP_SWG_NEXT = TP_UID(0x6, 0x8),
+  
+  /** Authenticate / Login (Obsolete, used in Enterprise) */
+  TP_SWG_AUTHENTICATE_OBS = TP_UID(0x6, 0xc),
   
   /** Scramble data */
   TP_SWG_GenKey = TP_UID(0x6, 0x10),

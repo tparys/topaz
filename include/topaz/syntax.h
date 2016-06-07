@@ -208,6 +208,17 @@ tp_errno_t tp_syn_enc_method(tp_buffer_t *tgt, uint64_t obj_uid,
 			     uint64_t method_uid, tp_buffer_t const *args);
 
 /**
+ * \brief Decode Byte
+ *
+ * Remove next byte from buffer, and compare against expected SWG token
+ *
+ * \param[out] header Data encoding metadata
+ * \param[in] buf Input data stream
+ * \return 0 on success, error code indicating failure
+ */
+tp_errno_t tp_syn_dec_byte(tp_buffer_t *tgt, uint8_t expected);
+
+/**
  * \brief Decode Atom Header
  *
  * Decode header data from datastream, and determine type of next atom,
